@@ -1,0 +1,24 @@
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Project-specific
+DESIGN.md
