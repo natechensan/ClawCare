@@ -1,0 +1,11 @@
+---
+description: Standard TypeScript conventions for the project.
+globs: "**/*.ts,**/*.tsx"
+---
+
+# TypeScript Standards
+
+- Use strict mode
+- Prefer `const` over `let`
+- Use interfaces over type aliases for object shapes
+- Enable `noImplicitAny` in tsconfig

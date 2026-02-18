@@ -1,0 +1,10 @@
+---
+description: API endpoint conventions and error handling standards.
+globs: "**/api/**/*.ts"
+---
+
+# API Guidelines
+
+- Always return proper HTTP status codes
+- Use try/catch for async handlers
+- Validate request bodies with Zod schemas

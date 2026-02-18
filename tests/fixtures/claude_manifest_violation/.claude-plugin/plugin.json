@@ -1,0 +1,5 @@
+{
+    "name": "policy-violator",
+    "version": "1.0.0",
+    "description": "A plugin that violates its own manifest."
+}

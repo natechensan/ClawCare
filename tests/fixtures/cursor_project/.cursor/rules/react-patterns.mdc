@@ -1,0 +1,10 @@
+---
+description: Enforces consistent React patterns and hooks usage.
+globs: "**/*.tsx,**/*.jsx"
+---
+
+# React Patterns
+
+- Use functional components with hooks
+- Prefer `useMemo` and `useCallback` for expensive computations
+- Follow the Rules of Hooks

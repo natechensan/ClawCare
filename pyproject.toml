@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clawcare"
+version = "0.1.1"
+description = "Guardian engine for agentic-tool extension supply-chain security"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1",
+    "pyyaml>=6.0",
+]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.8.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+
+[project.scripts]
+clawcare = "clawcare.cli:main"
+
+[project.entry-points."clawcare.adapters"]
+claude_code = "clawcare.integrations.claude_code:ClaudeCodeAdapter"
+openclaw = "clawcare.integrations.openclaw:OpenClawAdapter"
+codex = "clawcare.integrations.codex:CodexAdapter"
+cursor = "clawcare.integrations.cursor:CursorAdapter"
+
+[tool.setuptools.packages.find]
+include = ["clawcare*"]
+
+[tool.setuptools.package-data]
+"clawcare" = ["rulesets/**/*.yml"]
+
+[tool.setuptools]
+license-files = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "SIM108", # ternary operator — readability preference
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["clawcare"]
