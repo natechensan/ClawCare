@@ -39,6 +39,8 @@ class Rule:
     pattern: re.Pattern[str]
     explanation: str
     remediation: str = ""
+    confidence: str = "high"      # high | medium | low
+    scan_context: str = "any"     # any | code | prose
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +90,8 @@ def _load_rules_from_file(path: Path) -> list[Rule]:
                 pattern=re.compile(entry["pattern"], _parse_flags(entry.get("flags"))),
                 explanation=entry.get("explanation", ""),
                 remediation=entry.get("remediation", ""),
+                confidence=entry.get("confidence", "high"),
+                scan_context=entry.get("scan_context", "any"),
             ))
         except (KeyError, re.error, ValueError):
             continue  # skip malformed rules gracefully

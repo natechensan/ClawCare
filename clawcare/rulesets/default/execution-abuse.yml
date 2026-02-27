@@ -1,0 +1,108 @@
+# ClawCare Default Ruleset — Execution Abuse & System Impact
+#
+# Purpose: Detect command-execution, persistence, destructive behavior,
+# and unsafe execution primitives commonly used to gain control.
+
+# ── Critical ────────────────────────────────────────────────
+
+- id: CRIT_PIPE_TO_SHELL
+  severity: critical
+  pattern: "(curl|wget)\\s+[^\\n|]*\\|\\s*(bash|sh|zsh|python[23]?|node)"
+  explanation: Piping remote content directly into a shell interpreter is a classic supply-chain attack vector.
+  remediation: Download first, inspect, then execute.
+  scan_context: code
+
+- id: CRIT_POWERSHELL_ENCODED
+  severity: critical
+  pattern: "powershell\\s+.*-[eE](?:nc(?:oded)?[cC](?:ommand)?)\\s"
+  explanation: PowerShell encoded commands hide payload intent.
+  remediation: Use plain-text scripts instead of encoded commands.
+  scan_context: code
+
+- id: CRIT_POWERSHELL_IEX
+  severity: critical
+  pattern: "(?:iex|Invoke-Expression)\\s*[\\(\\s]"
+  explanation: Invoke-Expression can execute arbitrary code.
+  remediation: Avoid iex / Invoke-Expression.
+  scan_context: code
+
+- id: CRIT_BASE64_EXEC
+  severity: critical
+  pattern: "base64\\s+(-d|--decode)[^\\n|]*\\|\\s*(bash|sh|zsh|python[23]?|node|perl)"
+  explanation: Base64-decoded content piped to an interpreter hides the real payload.
+  remediation: Decode and inspect the content before execution.
+  scan_context: code
+
+- id: CRIT_PERSISTENCE
+  severity: critical
+  pattern: "(crontab\\s+-|/etc/cron|systemctl\\s+(enable|start)|LaunchAgents|LaunchDaemons|launchctl\\s+(load|submit))"
+  explanation: Setting up persistence mechanisms (cron, systemd, LaunchAgents) can allow long-running malicious processes.
+  remediation: Remove persistence setup or document it in the policy manifest.
+  scan_context: code
+
+- id: CRIT_DESTRUCTIVE
+  severity: critical
+  pattern: "(rm\\s+-r[f ]|rm\\s+-fr\\b|mkfs\\.|format\\s+[A-Za-z]:|diskutil\\s+erase)"
+  explanation: Destructive filesystem operations can cause data loss.
+  remediation: Avoid destructive operations in extension code.
+  scan_context: code
+
+- id: CRIT_REVERSE_SHELL
+  severity: critical
+  pattern: "(/dev/tcp/|nc\\s+.*-e\\s|ncat\\s+.*-e\\s|bash\\s+-i\\s+>&|python[23]?\\s+-c\\s+.*socket.*connect)"
+  explanation: Reverse shell patterns allow remote command execution.
+  remediation: Remove reverse shell code; this should never appear in extensions.
+
+# ── High ────────────────────────────────────────────────────
+
+- id: HIGH_RAW_IP_OUTBOUND
+  severity: high
+  pattern: "(https?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})"
+  explanation: Outbound connections to raw IP addresses bypass DNS oversight.
+  remediation: Use domain names instead of raw IP addresses.
+
+# ── Medium ──────────────────────────────────────────────────
+
+- id: MED_SUBPROCESS_SHELL
+  severity: medium
+  pattern: "subprocess\\.\\w+\\([^)]*shell\\s*=\\s*True"
+  explanation: subprocess with shell=True can execute arbitrary shell commands.
+  remediation: Use subprocess with shell=False and pass args as a list.
+  scan_context: code
+
+- id: MED_JS_EVAL
+  severity: medium
+  pattern: "\\b(eval|Function)\\s*\\("
+  explanation: eval() or Function() can execute arbitrary code at runtime.
+  remediation: Avoid eval/Function; use safer alternatives.
+  scan_context: code
+
+- id: MED_SHELL_EVAL
+  severity: medium
+  pattern: "\\beval\\s+[\\$\\(\"'`]"
+  explanation: Shell eval executes dynamically constructed commands, which can hide malicious payloads and bypass static analysis.
+  remediation: Avoid eval with dynamic input; source config files directly or use explicit variable assignments.
+  scan_context: code
+
+- id: MED_RUNTIME_INSTALL
+  severity: medium
+  pattern: "(pip\\s+install\\s|npm\\s+install\\s|yarn\\s+add\\s|gem\\s+install\\s)"
+  explanation: Installing packages at runtime in an extension script is risky unless pinned to exact versions with a lockfile.
+  remediation: Pin dependencies and use a lockfile.
+  scan_context: code
+  confidence: medium
+
+# ── Low ─────────────────────────────────────────────────────
+
+- id: LOW_BROAD_PERMISSIONS
+  severity: low
+  pattern: "(chmod\\s+777|chmod\\s+a\\+rwx|chmod\\s+-R\\s+777)"
+  explanation: Overly broad file permissions may expose sensitive files.
+  remediation: Use least-privilege permissions (e.g. 755 or 644).
+  scan_context: code
+
+- id: LOW_BROAD_GLOB
+  severity: low
+  pattern: "(glob\\.\\w+\\(\\s*['\"][*/]|readdir\\w*\\(\\s*['\"]/)"
+  explanation: Reading files with overly broad globs may access unintended data.
+  remediation: Narrow the file glob pattern to specific directories.

@@ -1,10 +1,8 @@
 """Tests for clawcare.models."""
 
 from clawcare.models import (
-    AdapterInfo,
     ExtensionRoot,
     Finding,
-    ScanResult,
     Severity,
 )
 
@@ -40,41 +38,5 @@ class TestFinding:
         assert [f.rule_id for f in ordered] == ["R2", "R3", "R1"]
 
 
-class TestScanResult:
-    def test_risk_score(self):
-        result = ScanResult(
-            scanned_path="/test",
-            adapter=AdapterInfo(name="test", version="1.0"),
-        )
-        result.findings = [
-            Finding("R1", Severity.CRITICAL, "a.py", 1, "", ""),
-            Finding("R2", Severity.HIGH, "b.py", 2, "", ""),
-        ]
-        score = result.compute_risk_score()
-        assert score == 35 + 20  # 55
 
-    def test_risk_label(self):
-        result = ScanResult(
-            scanned_path="/test",
-            adapter=AdapterInfo(name="test", version="1.0"),
-        )
-        result.risk_score = 0
-        assert result.risk_label == "low"
-        result.risk_score = 30
-        assert result.risk_label == "medium"
-        result.risk_score = 60
-        assert result.risk_label == "high"
-        result.risk_score = 80
-        assert result.risk_label == "critical"
 
-    def test_risk_score_caps_at_100(self):
-        result = ScanResult(
-            scanned_path="/test",
-            adapter=AdapterInfo(name="test", version="1.0"),
-        )
-        result.findings = [
-            Finding(f"R{i}", Severity.CRITICAL, "a.py", i, "", "")
-            for i in range(10)
-        ]
-        score = result.compute_risk_score()
-        assert score == 100

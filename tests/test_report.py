@@ -22,7 +22,6 @@ def _make_result() -> ScanResult:
         Finding("MANIFEST_EXEC", Severity.HIGH, "/test/root", 0,
                 "(manifest)", "exec violation"),
     ]
-    r.compute_risk_score()
     return r
 
 
@@ -39,7 +38,7 @@ class TestTextOutput:
 
     def test_contains_summary(self):
         output = render_text(_make_result(), color=False)
-        assert "Risk score:" in output
+        assert "Findings:" in output
 
 
 class TestJsonOutput:
@@ -69,4 +68,3 @@ class TestJsonOutput:
         doc = json.loads(render_json(_make_result()))
         assert doc["summary"]["critical"] == 1
         assert doc["summary"]["high"] == 2  # 1 finding + 1 manifest
-        assert doc["summary"]["risk_score"] > 0

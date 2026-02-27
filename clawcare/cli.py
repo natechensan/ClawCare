@@ -24,6 +24,7 @@ from clawcare.scanner.scanner import scan_root
 
 
 @click.group()
+@click.version_option()
 def main() -> None:
     """ClawCare — Guardian engine for agentic-tool extension security."""
 
@@ -154,7 +155,6 @@ def scan(
         result.findings = [f for f in result.findings if f.rule_id not in ignored]
 
     # --- scoring ---
-    result.compute_risk_score()
     result.fail_on = effective_fail_on
 
     # --- gate decision ---
@@ -212,3 +212,358 @@ def adapters_describe(name: str) -> None:
     click.echo(f"Version:  {a.version}")
     click.echo(f"Priority: {a.priority}")
     click.echo(f"Class:    {type(a).__module__}.{type(a).__qualname__}")
+
+
+# ───────────────────────────────────────────────────────────────────
+# guard
+# ───────────────────────────────────────────────────────────────────
+
+@main.group()
+def guard() -> None:
+    """Runtime command interception and audit (ClawCare Guard)."""
+
+
+@guard.command("run")
+@click.argument("command", nargs=-1, required=True)
+@click.option("--fail-on", "fail_on", default=None,
+              type=click.Choice(["low", "medium", "high", "critical"],
+                                case_sensitive=False),
+              help="Minimum severity to block (default: from config or high).")
+@click.option("--dry-run", is_flag=True, default=False,
+              help="Scan only — do not execute the command.")
+@click.option("--config", "config_path", default=None,
+              type=click.Path(), help="Path to guard config file.")
+def guard_run(
+    command: tuple[str, ...],
+    fail_on: str | None,
+    dry_run: bool,
+    config_path: str | None,
+) -> None:
+    """Scan and execute a command (wrapper mode).
+
+    Usage: clawcare guard run -- curl http://example.com
+    """
+    import subprocess
+    import time
+
+    from clawcare.guard.audit import write_audit_event
+    from clawcare.guard.config import load_guard_config
+    from clawcare.guard.scanner import scan_command
+
+    cfg = load_guard_config(config_path)
+    effective_fail_on = fail_on or cfg.fail_on
+    cmd_str = " ".join(command)
+
+    # --- pre-scan ---
+    verdict = scan_command(cmd_str, fail_on=effective_fail_on)
+
+    if cfg.audit.enabled:
+        _status_map = {"allow": "allowed", "warn": "warned", "block": "blocked"}
+        write_audit_event(
+            "pre_scan",
+            platform="generic",
+            command=cmd_str,
+            status=_status_map.get(verdict.decision, verdict.decision),
+            findings=[f.rule_id for f in verdict.findings],
+            log_path=cfg.audit.log_path,
+        )
+
+    # Show findings
+    if verdict.findings:
+        for f in verdict.findings:
+            sev = f.severity.name.upper()
+            click.echo(f"[{sev}] {f.rule_id}: {f.explanation}", err=True)
+
+    if verdict.blocked:
+        click.echo(f"\n⛔ ClawCare BLOCKED: {cmd_str}", err=True)
+        sys.exit(2)
+
+    if verdict.decision == "warn":
+        click.echo(f"\n⚠ ClawCare WARNING — proceeding with: {cmd_str}", err=True)
+
+    if dry_run:
+        click.echo("(dry-run — command not executed)")
+        sys.exit(0)
+
+    # --- execute ---
+    start = time.monotonic()
+    result = subprocess.run(cmd_str, shell=True)  # noqa: S602
+    elapsed_ms = (time.monotonic() - start) * 1000
+
+    if cfg.audit.enabled:
+        write_audit_event(
+            "post_exec",
+            platform="generic",
+            command=cmd_str,
+            status="executed",
+            findings=[f.rule_id for f in verdict.findings],
+            exit_code=result.returncode,
+            duration_ms=elapsed_ms,
+            log_path=cfg.audit.log_path,
+        )
+
+    sys.exit(result.returncode)
+
+
+@guard.command("hook")
+@click.option("--platform", required=True,
+              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+              help="Platform whose hook protocol to handle.")
+@click.option("--stage", required=True,
+              type=click.Choice(["pre", "post", "post-failure"], case_sensitive=False),
+              help="Hook stage: pre (before execution), post (after), or post-failure (on error).")
+@click.option("--config", "config_path", default=None,
+              type=click.Path(), help="Path to guard config file.")
+def guard_hook(platform: str, stage: str, config_path: str | None) -> None:
+    """Handle a platform hook event (reads JSON from stdin).
+
+    This command is invoked by the agent platform, not by users directly.
+
+    \b
+    Claude Code:
+      PreToolUse         → clawcare guard hook --platform claude --stage pre
+      PostToolUse        → clawcare guard hook --platform claude --stage post
+      PostToolUseFailure → clawcare guard hook --platform claude --stage post-failure
+    OpenClaw:
+      after_tool_call → clawcare guard hook --platform openclaw --stage post
+      (pre-command scanning is handled by the TS plugin calling
+       `clawcare guard run` directly)
+    """
+    from clawcare.guard.config import load_guard_config
+    from clawcare.guard.hooks.claude import (
+        handle_post,
+        handle_post_failure,
+        handle_pre,
+    )
+    from clawcare.guard.hooks.openclaw import (
+        handle_post as openclaw_handle_post,
+    )
+
+    cfg = load_guard_config(config_path)
+
+    if platform == "claude":
+        if stage == "pre":
+            exit_code = handle_pre(cfg)
+        elif stage == "post-failure":
+            exit_code = handle_post_failure(cfg)
+        else:
+            exit_code = handle_post(cfg)
+        sys.exit(exit_code)
+
+    if platform == "openclaw":
+        if stage == "pre":
+            # Pre-command scanning for OpenClaw is done by the TS plugin
+            # calling `clawcare guard run` directly; this path is a no-op.
+            sys.exit(0)
+        else:
+            exit_code = openclaw_handle_post(cfg)
+        sys.exit(exit_code)
+
+    click.echo(f"Unsupported platform: {platform}", err=True)
+    sys.exit(1)
+
+
+@guard.command("activate")
+@click.option("--platform", required=True,
+              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+              help="Platform to install hooks for.")
+@click.option("--settings", "settings_path", default=None,
+              type=click.Path(),
+              help="Path to platform settings file (auto-detected if omitted).")
+@click.option("--project", is_flag=True, default=False,
+              help="Install at project level instead of user level.")
+def guard_activate(platform: str, settings_path: str | None, project: bool) -> None:
+    """Install ClawCare guard hooks into a platform's config.
+
+    \b
+    Claude Code:
+      Edits ~/.claude/settings.json (or project-level .claude/settings.json)
+      to intercept Bash tool calls via PreToolUse and PostToolUse hooks.
+    OpenClaw:
+      Installs the ClawCare Guard TypeScript plugin into
+      ~/.openclaw/extensions/clawcare-guard/ and enables it in
+      ~/.openclaw/openclaw.json.
+    """
+    if platform == "claude":
+        from clawcare.guard.activate import activate_claude, _resolve_binary_path
+
+        dest = activate_claude(settings_path, project_level=project)
+        binary = _resolve_binary_path()
+        click.echo(f"✅ ClawCare guard hooks installed in {dest}")
+        click.echo(f"   Binary path: {binary}")
+        if binary == "clawcare":
+            click.echo(
+                "\n⚠  Warning: Could not resolve an absolute path for 'clawcare'.\n"
+                "   Hooks will use the bare command name and rely on PATH.\n"
+                "   If Claude Code cannot find the binary, re-activate after\n"
+                "   ensuring 'clawcare' is on PATH or installed with pipx.",
+                err=True,
+            )
+        return
+
+    if platform == "openclaw":
+        from clawcare.guard.activate import activate_openclaw, _resolve_binary_path
+
+        dest = activate_openclaw(
+            openclaw_home=settings_path,
+        )
+        binary = _resolve_binary_path()
+        click.echo(f"✅ ClawCare guard plugin installed in {dest}")
+        click.echo(f"   Binary path: {binary}")
+
+        if binary == "clawcare":
+            click.echo(
+                "\n⚠  Warning: Could not resolve an absolute path for 'clawcare'.\n"
+                "   The plugin will use the bare command name and rely on PATH.\n"
+                "   Consider installing with `pipx install clawcare` or adding\n"
+                "   the virtualenv bin directory to your shell PATH.",
+                err=True,
+            )
+        return
+
+    click.echo(f"Unsupported platform: {platform}", err=True)
+    sys.exit(1)
+
+
+@guard.command("deactivate")
+@click.option("--platform", required=True,
+              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+              help="Platform to remove hooks from.")
+@click.option("--settings", "settings_path", default=None,
+              type=click.Path(),
+              help="Path to platform settings file (auto-detected if omitted).")
+def guard_deactivate(platform: str, settings_path: str | None) -> None:
+    """Remove ClawCare guard hooks from a platform's config."""
+    if platform == "claude":
+        from clawcare.guard.activate import deactivate_claude
+
+        removed = deactivate_claude(settings_path)
+        if removed:
+            click.echo("✅ ClawCare guard hooks removed.")
+        else:
+            click.echo("No ClawCare hooks found to remove.")
+        return
+
+    if platform == "openclaw":
+        from clawcare.guard.activate import deactivate_openclaw
+
+        removed = deactivate_openclaw(
+            openclaw_home=settings_path,
+        )
+        if removed:
+            click.echo("✅ ClawCare guard plugin removed.")
+        else:
+            click.echo("No ClawCare plugin found to remove.")
+        return
+
+    click.echo(f"Unsupported platform: {platform}", err=True)
+    sys.exit(1)
+
+
+@guard.command("status")
+@click.option("--platform", required=True,
+              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+              help="Platform to check.")
+@click.option("--settings", "settings_path", default=None,
+              type=click.Path(),
+              help="Path to platform settings file.")
+def guard_status(platform: str, settings_path: str | None) -> None:
+    """Check whether ClawCare guard hooks are installed."""
+    if platform == "claude":
+        from clawcare.guard.activate import is_claude_active
+
+        active = is_claude_active(settings_path)
+        if active:
+            click.echo("ClawCare guard hooks: ACTIVE")
+        else:
+            click.echo("ClawCare guard hooks: NOT INSTALLED")
+        return
+
+    if platform == "openclaw":
+        from clawcare.guard.activate import is_openclaw_active
+
+        active = is_openclaw_active(
+            openclaw_home=settings_path,
+        )
+        if active:
+            click.echo("ClawCare guard plugin: ACTIVE")
+        else:
+            click.echo("ClawCare guard plugin: NOT INSTALLED")
+        return
+
+    click.echo(f"Unsupported platform: {platform}", err=True)
+    sys.exit(1)
+
+
+@guard.command("report")
+@click.option("--since", "since", default=None,
+              help="Filter events since relative time (e.g. 24h, 30m, 7d) or ISO timestamp.")
+@click.option("--only-violations", is_flag=True, default=False,
+              help="Show only events with matched findings.")
+@click.option("--format", "fmt", default="text",
+              type=click.Choice(["text", "json"], case_sensitive=False),
+              help="Output format.")
+@click.option("--limit", "limit", default=100, type=int,
+              help="Max number of events to show (newest first).")
+@click.option("--config", "config_path", default=None,
+              type=click.Path(), help="Path to guard config file.")
+@click.option("--log-path", "log_path", default=None,
+              type=click.Path(), help="Override audit log path.")
+def guard_report(
+    since: str | None,
+    only_violations: bool,
+    fmt: str,
+    limit: int,
+    config_path: str | None,
+    log_path: str | None,
+) -> None:
+    """Query and summarize ClawCare Guard audit history.
+
+    Shows command execution history with findings and statuses.
+    """
+    import json
+
+    from clawcare.guard.audit import read_audit_events
+    from clawcare.guard.config import load_guard_config
+
+    cfg = load_guard_config(config_path)
+    effective_log = log_path or cfg.audit.log_path
+
+    events = read_audit_events(
+        log_path=effective_log,
+        since=since,
+        only_violations=only_violations,
+    )
+
+    events = list(reversed(events))
+    if limit > 0:
+        events = events[:limit]
+
+    if fmt == "json":
+        click.echo(json.dumps(events, indent=2, ensure_ascii=False))
+        return
+
+    if not events:
+        click.echo("No audit events found for the selected filters.")
+        return
+
+    click.echo(f"ClawCare Guard Report ({len(events)} events)")
+    click.echo("-" * 72)
+    for event in events:
+        ts = event.get("timestamp", "-")
+        platform = event.get("platform", "-")
+        kind = event.get("event", "-")
+        status = event.get("status", event.get("decision", "-"))
+        command = event.get("command", "")
+        findings = event.get("findings", [])
+        finding_text = ", ".join(findings) if findings else "none"
+        click.echo(f"[{ts}] {platform} {kind} status={status}")
+        click.echo(f"  cmd: {command}")
+        click.echo(f"  findings: {finding_text}")
+        if "exit_code" in event:
+            click.echo(f"  exit_code: {event.get('exit_code')}")
+        if "duration_ms" in event:
+            click.echo(f"  duration_ms: {event.get('duration_ms')}")
+        if event.get("error"):
+            click.echo(f"  error: {event.get('error')}")
+        click.echo()

@@ -1,7 +1,0 @@
-scan:
-  fail_on: critical
-  block_local: false
-  ignore_rules:
-    - MED_JS_EVAL
-  exclude:
-    - "vendor/**"

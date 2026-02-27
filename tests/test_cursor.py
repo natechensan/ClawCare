@@ -87,7 +87,7 @@ class TestCursorBenignProject:
         )
         for root in roots:
             result.findings.extend(scan_root(root, adapter.scan_scope(root)))
-        result.compute_risk_score()
+
         assert decide(result, ci_flag=True, fail_on="high") == 0
 
 
@@ -107,7 +107,7 @@ class TestCursorMaliciousProject:
         for root in roots:
             self.result.findings.extend(
                 scan_root(root, adapter.scan_scope(root)))
-        self.result.compute_risk_score()
+
 
     def test_has_critical_findings(self):
         assert Severity.CRITICAL in {f.severity for f in self.result.findings}

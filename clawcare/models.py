@@ -107,7 +107,6 @@ class ScanResult:
     roots: list[ExtensionRoot] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
     manifest_violations: list[Finding] = field(default_factory=list)
-    risk_score: int = 0
     mode: str = "local"
     fail_on: str = "high"
 
@@ -118,26 +117,3 @@ class ScanResult:
             self.findings + self.manifest_violations,
             key=lambda f: f.sort_key(),
         )
-
-    def compute_risk_score(self) -> int:
-        """Heuristic 0–100 score."""
-        score = 0
-        for f in self.findings + self.manifest_violations:
-            score += {
-                Severity.LOW: 2,
-                Severity.MEDIUM: 8,
-                Severity.HIGH: 20,
-                Severity.CRITICAL: 35,
-            }.get(f.severity, 0)
-        self.risk_score = min(score, 100)
-        return self.risk_score
-
-    @property
-    def risk_label(self) -> str:
-        if self.risk_score >= 75:
-            return "critical"
-        if self.risk_score >= 50:
-            return "high"
-        if self.risk_score >= 25:
-            return "medium"
-        return "low"

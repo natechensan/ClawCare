@@ -51,7 +51,7 @@ def _run_engine(fixture_name, adapter, ci=False, manifest_opt="auto"):
             violations = enforce(manifest, root, "\n".join(texts))
             result.manifest_violations.extend(violations)
 
-    result.compute_risk_score()
+
     exit_code = decide(result, ci_flag=ci, fail_on="high")
     return result, exit_code
 
@@ -94,9 +94,7 @@ class TestClaudeMaliciousPlugin:
         _, code = _run_engine("claude_malicious_plugin", claude)
         assert code == 0
 
-    def test_risk_score_high(self):
-        result, _ = _run_engine("claude_malicious_plugin", claude)
-        assert result.risk_score >= 50
+
 
     def test_detected_as_plugin(self):
         result, _ = _run_engine("claude_malicious_plugin", claude)
@@ -158,6 +156,4 @@ class TestOpenClawMaliciousProject:
         _, code = _run_engine("openclaw_malicious_project", openclaw)
         assert code == 0
 
-    def test_risk_score_high(self):
-        result, _ = _run_engine("openclaw_malicious_project", openclaw)
-        assert result.risk_score >= 50
+

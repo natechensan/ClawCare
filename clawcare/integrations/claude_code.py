@@ -52,10 +52,14 @@ class ClaudeCodeAdapter:
         if hooks_json.is_file():
             score += 0.1
 
-        # Also check subdirectories for plugin bundles
+        # Also check subdirectories for plugin bundles OR standalone skills
         for child in p.iterdir():
-            if child.is_dir() and (child / ".claude-plugin" / "plugin.json").is_file():
+            if not child.is_dir():
+                continue
+            if (child / ".claude-plugin" / "plugin.json").is_file():
                 score += 0.15
+            elif (child / "SKILL.md").is_file():
+                score += 0.15  # Boost score if children look like skills
 
         return min(score, 1.0)
 

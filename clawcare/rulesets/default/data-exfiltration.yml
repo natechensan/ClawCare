@@ -1,0 +1,128 @@
+# ClawCare Default Ruleset — Data Exfiltration & Secrets Exposure
+#
+# Purpose: Detect patterns that expose credentials, secrets, PII, or
+# environment data — whether through outbound commands or context leakage.
+
+# ── Critical — direct secret theft/exfil patterns ───────────
+
+- id: CRIT_CREDENTIAL_PATH
+  severity: critical
+  pattern: "(~/\\.ssh/|id_rsa|id_ed25519|\\.pem\\b|~/\\.aws/credentials|~/\\.kube/config|security\\s+find-generic-password|security\\s+find-internet-password)"
+  explanation: Accessing well-known credential paths or keychain commands.
+  remediation: Avoid accessing credential paths directly; use a secrets manager.
+
+- id: CRIT_SECRET_EXFIL
+  severity: critical
+  pattern: "(API_KEY|SECRET_KEY|ACCESS_TOKEN|PRIVATE_KEY|PASSWORD)[^\\n]{0,80}(POST|fetch|requests\\.post|curl\\s+-X\\s*POST|curl\\s+--data)"
+  explanation: Secret environment variable referenced near an outbound POST call suggests credential exfiltration.
+  remediation: Avoid sending secrets over the network in extension code.
+
+- id: CRIT_NETWORK_EXFIL
+  severity: critical
+  pattern: "(curl|wget)\\s+.*?(-d|--data|-X\\s*POST|-F|--form|--post-data)"
+  explanation: Usage of curl/wget with data transmission flags suggests outbound exfiltration.
+  remediation: Inspect network calls. Explicitly document any required telemetry.
+  scan_context: code
+
+- id: CRIT_ENV_ECHO_KNOWN_SECRET
+  severity: critical
+  pattern: "(?:echo|printf|print)\\b[^\\n]*?\\$\\{?(?:AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|AWS_SECURITY_TOKEN|API_KEY|SECRET_KEY|SECRET_ACCESS_KEY|ACCESS_TOKEN|REFRESH_TOKEN|AUTH_TOKEN|BEARER_TOKEN|ID_TOKEN|PRIVATE_KEY|RSA_KEY|SIGNING_KEY|PASSWORD|PASSWD|DB_PASSWORD|DATABASE_PASSWORD|PGPASSWORD|MYSQL_PWD|DATABASE_URL|DB_URL|GITHUB_TOKEN|GH_TOKEN|GITLAB_TOKEN|SLACK_TOKEN|SLACK_SIGNING_SECRET|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|OPENAI_API_KEY|ANTHROPIC_API_KEY|GOOGLE_API_KEY|GEMINI_API_KEY|SENDGRID_API_KEY|MAILGUN_API_KEY|TWILIO_AUTH_TOKEN|VAULT_TOKEN|NPM_TOKEN|PYPI_TOKEN)\\b"
+  flags: IGNORECASE
+  explanation: Echoing a known-secret environment variable causes its value to appear in the agent's context window and be transmitted to the AI provider API — exfiltrating the secret without any explicit outbound call by the extension.
+  remediation: Never echo secret environment variable values in agent-accessible scripts or instructions. Use a secrets manager or avoid exposing raw values.
+
+# ── High — environment leakage patterns ─────────────────────
+
+- id: HIGH_ENV_BULK_DUMP
+  severity: high
+  pattern: "(?:^|&&|;|\\|)\\s*(?:env(?!\\s+\\w+=\\S)|printenv|export\\s+-p|declare\\s+-x|Get-ChildItem\\s+Env:|dir\\s+env:)\\s*(?:$|\\||>|&&|;|#)"
+  flags: IGNORECASE|MULTILINE
+  explanation: This command dumps all environment variables. In an agentic context the full dump — including every secret present in the process environment — enters the agent's context window and is sent to the AI provider.
+  remediation: Avoid bare env/printenv in agent-accessible scripts. If inspection is needed, filter to specific non-sensitive variable names only.
+
+- id: HIGH_PROC_ENVIRON
+  severity: high
+  pattern: "/proc/(?:self|[0-9]+)/environ"
+  explanation: Reading /proc/<pid>/environ on Linux returns all environment variables as a NUL-separated blob — a one-line full-secret dump.
+  remediation: Remove access to /proc/environ from extension scripts and instructions.
+
+- id: HIGH_ENV_VAR_ECHO
+  severity: high
+  pattern: "(?:echo|printf)\\s+[\"']?\\$\\{?[A-Z][A-Z0-9_]{3,}\\b"
+  flags: IGNORECASE
+  explanation: Echoing an environment variable whose name follows the ALL_CAPS_SECRET convention may expose a secret. In an agentic context the value becomes part of the tool-call result and is sent to the AI provider.
+  remediation: Review whether this variable contains sensitive data. Prefer a secrets manager over echoing raw env vars in agent scripts.
+  confidence: medium
+
+# ── Critical/High/Medium/Low — hardcoded sensitive data ────
+
+- id: DATA_HARDCODED_AWS_KEY
+  severity: critical
+  pattern: "(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}"
+  explanation: Hardcoded AWS access key ID detected.
+  remediation: Use environment variables or a secrets manager instead of hardcoding credentials.
+
+- id: DATA_HARDCODED_PRIVATE_KEY
+  severity: critical
+  pattern: "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"
+  explanation: Private key embedded in source code.
+  remediation: Store private keys in a secrets manager, never commit them to source.
+
+- id: DATA_HARDCODED_GITHUB_TOKEN
+  severity: critical
+  pattern: "(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{82})"
+  explanation: GitHub personal access token detected in source.
+  remediation: Use environment variables for tokens.
+
+- id: DATA_HARDCODED_GENERIC_SECRET
+  severity: high
+  pattern: "(?i)(api_key|secret_key|auth_token|access_token|private_key|password)\\s*[:=]\\s*['\"][A-Za-z0-9+/=_-]{16,}['\"]"
+  explanation: Possible hardcoded secret or API key in source code.
+  remediation: Use environment variables or a secrets manager.
+
+- id: DATA_SSN
+  severity: high
+  pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+  explanation: Pattern resembles a US Social Security Number (SSN).
+  remediation: Remove or obfuscate SSNs. Never hardcode PII in extension code.
+
+- id: DATA_CREDIT_CARD
+  severity: high
+  pattern: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b"
+  explanation: Pattern resembles a credit card number (Visa, Mastercard, Amex, Discover).
+  remediation: Never hardcode payment card data. Use tokenization.
+
+- id: DATA_EMAIL_COLLECTION
+  severity: medium
+  pattern: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+  explanation: Email address detected. May indicate PII collection or hardcoded contact info.
+  remediation: Avoid hardcoding email addresses; use configuration or environment variables.
+  confidence: low
+
+- id: DATA_IBAN
+  severity: medium
+  pattern: "\\b[A-Z]{2}\\d{2}[A-Z0-9]{4}\\d{7}([A-Z0-9]?){0,16}\\b"
+  explanation: Pattern resembles an International Bank Account Number (IBAN).
+  remediation: Never hardcode financial account numbers in source code.
+
+- id: DATA_ROUTING_NUMBER
+  severity: medium
+  pattern: "(?i)(routing[_\\s-]?number|aba[_\\s-]?number)\\s*[:=]\\s*['\"]?\\d{9}['\"]?"
+  explanation: US bank routing number (ABA) detected.
+  remediation: Use secure configuration for financial data.
+
+- id: DATA_IP_ADDRESS_LITERAL
+  severity: low
+  pattern: "\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b"
+  explanation: Hardcoded IP address may expose internal infrastructure details.
+  remediation: Use hostnames or configuration for IP addresses.
+  confidence: low
+  scan_context: code
+
+- id: DATA_PHONE_NUMBER
+  severity: low
+  pattern: "(?<!\\d)(?:\\+1[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}(?!\\d)"
+  explanation: Pattern resembles a US phone number.
+  remediation: Avoid hardcoding phone numbers in extension code.
+  confidence: low
+  scan_context: code

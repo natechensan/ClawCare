@@ -1,0 +1,20 @@
+# ClawCare Default Ruleset — Prompt Injection & Instruction Exfiltration
+#
+# Purpose: Detect natural-language instructions in docs that coerce an
+# agent into exposing secrets or dumping environment variables.
+
+- id: HIGH_PROMPT_ENV_DISCLOSURE
+  severity: high
+  pattern: "(?:echo|print|show|display|list|output|dump|reveal|expose|return|read|get|fetch|log|report)\\s+(?:(?:your|all|the|any)\\s+)?(?:env(?:ironment)?\\s+(?:variable|var|secret|key)|api.?key|secret.?key|access.?token|credential|auth.?token|private.?key|password)"
+  flags: IGNORECASE
+  explanation: An instruction in this file appears to direct an agent to reveal environment variables or credentials. If followed, secret values will enter the agent's context window and be sent to the AI provider API.
+  remediation: Remove instructions that direct agents to read or echo environment variables or credentials. This is a common prompt-injection exfiltration vector.
+  scan_context: prose
+
+- id: HIGH_PROMPT_PRINTENV_INSTRUCTION
+  severity: high
+  pattern: "(?:run|execute|call|use|do)\\s+(?:'|\"|`)?(?:env|printenv|export\\s+-p)(?:'|\"|`)?"
+  flags: IGNORECASE
+  explanation: An instruction tells the agent to run env/printenv/export -p, which would dump all environment variables into the agent's context and transmit them to the AI provider.
+  remediation: Remove instructions directing agents to dump the environment.
+  scan_context: prose

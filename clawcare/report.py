@@ -81,7 +81,6 @@ def render_text(result: ScanResult, color: bool = True) -> str:
         f"Findings: {count_crit} critical, {count_high} high, "
         f"{count_med} medium, {count_low} low"
     )
-    lines.append(f"Risk score: {result.risk_score}/100 ({result.risk_label})")
     lines.append("=" * 60)
 
     return "\n".join(lines)
@@ -137,8 +136,6 @@ def render_json(result: ScanResult) -> str:
             "low": sum(
                 1 for f in result.all_findings if f.severity == Severity.LOW
             ),
-            "risk_score": result.risk_score,
-            "risk_label": result.risk_label,
             "fail_on": result.fail_on,
             "mode": result.mode,
         },
