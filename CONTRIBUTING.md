@@ -5,7 +5,7 @@ Thank you for your interest in contributing! We use **GitHub Flow** — branch o
 ## Development Setup
 
 ```bash
-git clone https://github.com/natechansan/ClawCare
+git clone https://github.com/natechensan/ClawCare
 cd ClawCare
 make install     # install in dev mode with ruff + pytest
 make check       # lint + test (run before opening a PR)

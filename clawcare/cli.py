@@ -246,11 +246,13 @@ def guard_run(
     import subprocess
     import time
 
+    import os
+
     from clawcare.guard.audit import write_audit_event
     from clawcare.guard.config import load_guard_config
     from clawcare.guard.scanner import scan_command
 
-    cfg = load_guard_config(config_path)
+    cfg = load_guard_config(config_path, scan_path=None if config_path else os.getcwd())
     effective_fail_on = fail_on or cfg.fail_on
     cmd_str = " ".join(command)
 
@@ -329,6 +331,8 @@ def guard_hook(platform: str, stage: str, config_path: str | None) -> None:
       (pre-command scanning is handled by the TS plugin calling
        `clawcare guard run` directly)
     """
+    import os
+
     from clawcare.guard.config import load_guard_config
     from clawcare.guard.hooks.claude import (
         handle_post,
@@ -339,7 +343,7 @@ def guard_hook(platform: str, stage: str, config_path: str | None) -> None:
         handle_post as openclaw_handle_post,
     )
 
-    cfg = load_guard_config(config_path)
+    cfg = load_guard_config(config_path, scan_path=None if config_path else os.getcwd())
 
     if platform == "claude":
         if stage == "pre":
@@ -523,10 +527,12 @@ def guard_report(
     """
     import json
 
+    import os
+
     from clawcare.guard.audit import read_audit_events
     from clawcare.guard.config import load_guard_config
 
-    cfg = load_guard_config(config_path)
+    cfg = load_guard_config(config_path, scan_path=None if config_path else os.getcwd())
     effective_log = log_path or cfg.audit.log_path
 
     events = read_audit_events(
