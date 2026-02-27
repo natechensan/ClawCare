@@ -91,7 +91,6 @@ class PolicyManifest:
 @dataclass
 class AdapterInfo:
     name: str
-    version: str
 
 
 # ---------------------------------------------------------------------------

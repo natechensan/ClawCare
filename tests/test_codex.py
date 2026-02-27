@@ -66,7 +66,7 @@ class TestCodexBenignProject:
         roots = discover(adapter, target)
         result = ScanResult(
             scanned_path=target,
-            adapter=AdapterInfo(name=adapter.name, version=adapter.version),
+            adapter=AdapterInfo(name=adapter.name),
             roots=roots,
             fail_on="high",
         )
@@ -81,7 +81,7 @@ class TestCodexBenignProject:
         roots = discover(adapter, target)
         result = ScanResult(
             scanned_path=target,
-            adapter=AdapterInfo(name=adapter.name, version=adapter.version),
+            adapter=AdapterInfo(name=adapter.name),
             roots=roots,
             fail_on="high",
         )
@@ -100,7 +100,7 @@ class TestCodexMaliciousProject:
         roots = discover(adapter, target)
         self.result = ScanResult(
             scanned_path=target,
-            adapter=AdapterInfo(name=adapter.name, version=adapter.version),
+            adapter=AdapterInfo(name=adapter.name),
             roots=roots,
             fail_on="high",
         )

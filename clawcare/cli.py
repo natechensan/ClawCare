@@ -110,7 +110,7 @@ def scan(
     # --- scan ---
     result = ScanResult(
         scanned_path=target_path,
-        adapter=AdapterInfo(name=adapter.name, version=adapter.version),
+        adapter=AdapterInfo(name=adapter.name),
         roots=roots,
         fail_on=effective_fail_on,
     )
@@ -192,10 +192,10 @@ def adapters_list() -> None:
     if not all_adapters:
         click.echo("No adapters registered.")
         return
-    click.echo(f"{'Name':<20} {'Version':<10} {'Priority'}")
-    click.echo("-" * 42)
+    click.echo(f"{'Name':<20} {'Priority'}")
+    click.echo("-" * 32)
     for a in sorted(all_adapters, key=lambda a: a.name):
-        click.echo(f"{a.name:<20} {a.version:<10} {a.priority}")
+        click.echo(f"{a.name:<20} {a.priority}")
 
 
 @adapters.command("describe")
@@ -209,7 +209,6 @@ def adapters_describe(name: str) -> None:
         sys.exit(1)
     a = matched[0]
     click.echo(f"Name:     {a.name}")
-    click.echo(f"Version:  {a.version}")
     click.echo(f"Priority: {a.priority}")
     click.echo(f"Class:    {type(a).__module__}.{type(a).__qualname__}")
 

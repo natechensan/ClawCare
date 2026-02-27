@@ -19,7 +19,6 @@ class CodexAdapter:
     """Adapter for OpenAI Codex CLI skills and AGENTS.md projects."""
 
     name: str = "codex"
-    version: str = "0.1.0"
     priority: int = 80
 
     # Codex-specific markers

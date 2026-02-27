@@ -19,7 +19,6 @@ class ClaudeCodeAdapter:
     """Adapter for Claude Code plugins and skills."""
 
     name: str = "claude_code"
-    version: str = "0.1.0"
     priority: int = 100
 
     # ── detect ──────────────────────────────────────────────────

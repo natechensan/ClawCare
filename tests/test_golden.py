@@ -31,7 +31,7 @@ def _run_engine(fixture_name, adapter, ci=False, manifest_opt="auto"):
 
     result = ScanResult(
         scanned_path=target,
-        adapter=AdapterInfo(name=adapter.name, version=adapter.version),
+        adapter=AdapterInfo(name=adapter.name),
         roots=roots,
         fail_on="high",
     )

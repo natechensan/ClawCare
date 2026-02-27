@@ -12,7 +12,6 @@ class OpenClawAdapter:
     """Adapter for OpenClaw skills defined around SKILL.md."""
 
     name: str = "openclaw"
-    version: str = "0.1.0"
     priority: int = 90
 
     # ── detect ──────────────────────────────────────────────────

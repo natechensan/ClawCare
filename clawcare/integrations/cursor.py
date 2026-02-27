@@ -22,7 +22,6 @@ class CursorAdapter:
     """Adapter for Cursor AI agent skills and .cursor/rules/ projects."""
 
     name: str = "cursor"
-    version: str = "0.1.0"
     priority: int = 70
 
     # ── detect ──────────────────────────────────────────────────

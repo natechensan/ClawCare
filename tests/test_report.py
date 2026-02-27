@@ -2,6 +2,7 @@
 
 import json
 
+import clawcare
 from clawcare.models import AdapterInfo, Finding, ScanResult, Severity
 from clawcare.report import render_json, render_text
 
@@ -9,7 +10,7 @@ from clawcare.report import render_json, render_text
 def _make_result() -> ScanResult:
     r = ScanResult(
         scanned_path="/test/path",
-        adapter=AdapterInfo(name="claude_code", version="0.1.0"),
+        adapter=AdapterInfo(name="claude_code"),
         fail_on="high",
     )
     r.findings = [
@@ -29,7 +30,7 @@ class TestTextOutput:
     def test_contains_adapter(self):
         output = render_text(_make_result(), color=False)
         assert "claude_code" in output
-        assert "0.1.0" in output
+        assert clawcare.__version__ in output
 
     def test_contains_findings(self):
         output = render_text(_make_result(), color=False)

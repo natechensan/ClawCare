@@ -11,7 +11,7 @@ from clawcare.models import AdapterInfo, Finding, ScanResult, Severity
 def result_with_high():
     r = ScanResult(
         scanned_path="/test",
-        adapter=AdapterInfo(name="test", version="1.0"),
+        adapter=AdapterInfo(name="test"),
     )
     r.findings = [
         Finding("R1", Severity.HIGH, "a.py", 1, "", "high finding"),
@@ -23,7 +23,7 @@ def result_with_high():
 def result_with_medium():
     r = ScanResult(
         scanned_path="/test",
-        adapter=AdapterInfo(name="test", version="1.0"),
+        adapter=AdapterInfo(name="test"),
     )
     r.findings = [
         Finding("R1", Severity.MEDIUM, "a.py", 1, "", "medium finding"),
@@ -35,7 +35,7 @@ def result_with_medium():
 def result_clean():
     return ScanResult(
         scanned_path="/test",
-        adapter=AdapterInfo(name="test", version="1.0"),
+        adapter=AdapterInfo(name="test"),
     )
 
 
