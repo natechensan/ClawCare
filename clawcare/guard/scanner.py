@@ -130,10 +130,6 @@ _CMD_WRAPPERS = frozenset(
     }
 )
 
-# Extract the leading command verb, stripping VAR=val prefixes and wrappers.
-_ENV_PREFIX_RE = re.compile(r"\w+=\S+\s+")
-
-
 def _quoted_spans(cmd: str) -> list[tuple[int, int]]:
     """Return ``(start, end)`` spans of quoted strings in *cmd*."""
     return [(m.start(), m.end()) for m in _QUOTED_RE.finditer(cmd)]
