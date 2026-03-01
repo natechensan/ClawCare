@@ -1,6 +1,5 @@
 """Tests for gate mode logic (§9)."""
 
-
 import pytest
 
 from clawcare.gate import decide
@@ -57,8 +56,7 @@ class TestGateDecide:
         assert code == 2
 
     def test_enforce_blocks_locally(self, result_with_high):
-        code = decide(result_with_high, ci_flag=False, enforce=True,
-                      fail_on="high")
+        code = decide(result_with_high, ci_flag=False, enforce=True, fail_on="high")
         assert code == 2
 
     def test_clean_scan_passes_in_ci(self, result_clean):

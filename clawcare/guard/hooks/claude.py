@@ -47,12 +47,10 @@ Always exits 0; used purely for audit logging.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
-import time
 from typing import Any
-
-import os
 
 from clawcare.guard.audit import write_audit_event
 from clawcare.guard.config import GuardConfig
@@ -99,7 +97,8 @@ def handle_pre(config: GuardConfig) -> int:
     # Ref: https://code.claude.com/docs/en/hooks#pretooluse-decision-control
     if verdict.blocked:
         reasons = "; ".join(
-            f"{f.rule_id}: {f.explanation}" for f in verdict.findings
+            f"{f.rule_id}: {f.explanation}"
+            for f in verdict.findings
             if f.severity.value >= config.fail_on_severity
         )
         deny_reason = f"ClawCare blocked: {reasons}"
@@ -116,9 +115,7 @@ def handle_pre(config: GuardConfig) -> int:
         return 2
 
     if verdict.decision == "warn":
-        reasons = "; ".join(
-            f"{f.rule_id}: {f.explanation}" for f in verdict.findings
-        )
+        reasons = "; ".join(f"{f.rule_id}: {f.explanation}" for f in verdict.findings)
         warn_reason = f"ClawCare warning: {reasons}"
         response = {
             "hookSpecificOutput": {
@@ -160,10 +157,8 @@ def handle_post(config: GuardConfig) -> int:
         if raw_code is None:
             raw_code = tool_result.get("exitCode")
         if raw_code is not None:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 exit_code = int(raw_code)
-            except (ValueError, TypeError):
-                pass
 
     if config.audit.enabled:
         write_audit_event(
@@ -205,10 +200,8 @@ def handle_post_failure(config: GuardConfig) -> int:
     if isinstance(tool_error, dict):
         raw_code = tool_error.get("exit_code") or tool_error.get("exitCode")
         if raw_code is not None:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 exit_code = int(raw_code)
-            except (ValueError, TypeError):
-                pass
         error_message = str(tool_error.get("stderr", "") or tool_error.get("error", ""))
     elif isinstance(tool_error, str):
         error_message = tool_error
@@ -234,6 +227,7 @@ def handle_post_failure(config: GuardConfig) -> int:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_command(tool_name: str, tool_input: dict) -> str | None:
     """Extract the command string from a Claude Code tool event.

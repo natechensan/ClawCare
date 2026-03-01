@@ -40,35 +40,43 @@ def parse_markdown(text: str) -> list[Segment]:
             # token.map is [start_line, end_line) 0-indexed
             # Content starts on the line after the opening fence
             start = (token.map[0] + 2) if token.map else 1
-            segments.append(Segment(
-                content=token.content,
-                kind="code",
-                lang=lang,
-                start_line=start,
-            ))
+            segments.append(
+                Segment(
+                    content=token.content,
+                    kind="code",
+                    lang=lang,
+                    start_line=start,
+                )
+            )
         elif token.type == "code_block":
             # Indented code block (4-space indent)
             start = (token.map[0] + 1) if token.map else 1
-            segments.append(Segment(
-                content=token.content,
-                kind="code",
-                lang=None,
-                start_line=start,
-            ))
+            segments.append(
+                Segment(
+                    content=token.content,
+                    kind="code",
+                    lang=None,
+                    start_line=start,
+                )
+            )
         elif token.type == "inline" and token.content:
             # Inline content (paragraphs, headings, list items, etc.)
             start = (token.map[0] + 1) if token.map else 1
-            segments.append(Segment(
-                content=token.content,
-                kind="prose",
-                start_line=start,
-            ))
+            segments.append(
+                Segment(
+                    content=token.content,
+                    kind="prose",
+                    start_line=start,
+                )
+            )
         elif token.type == "html_block" and token.content:
             start = (token.map[0] + 1) if token.map else 1
-            segments.append(Segment(
-                content=token.content,
-                kind="prose",
-                start_line=start,
-            ))
+            segments.append(
+                Segment(
+                    content=token.content,
+                    kind="prose",
+                    start_line=start,
+                )
+            )
 
     return segments

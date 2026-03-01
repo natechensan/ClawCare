@@ -49,6 +49,7 @@ DEFAULT_LOG_PATH = USER_CONFIG_DIR / "history.jsonl"
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ScanConfig:
     """Scan sub-configuration."""
@@ -116,6 +117,7 @@ ProjectConfig = ScanConfig
 # ---------------------------------------------------------------------------
 # Public loaders
 # ---------------------------------------------------------------------------
+
 
 def load_config(
     scan_path: str | None = None,
@@ -188,6 +190,7 @@ def load_guard_config(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _find_project_config(scan_path: str) -> Path | None:
     """Search for ``.clawcare.yml`` in *scan_path* and ancestors."""

@@ -16,6 +16,7 @@ adapter = CodexAdapter()
 
 # ── Detection ────────────────────────────────────────────────────
 
+
 class TestCodexDetect:
     def test_agents_md_detected(self):
         conf = adapter.detect(os.path.join(FIXTURES, "codex_project"))
@@ -40,6 +41,7 @@ class TestCodexDetect:
 
 # ── Discovery ────────────────────────────────────────────────────
 
+
 class TestCodexDiscover:
     def test_project_has_codex_project_root(self):
         roots = discover(adapter, os.path.join(FIXTURES, "codex_project"))
@@ -59,6 +61,7 @@ class TestCodexDiscover:
 
 
 # ── Golden: benign Codex project ─────────────────────────────────
+
 
 class TestCodexBenignProject:
     def test_no_findings(self):
@@ -93,6 +96,7 @@ class TestCodexBenignProject:
 
 # ── Golden: malicious Codex project ──────────────────────────────
 
+
 class TestCodexMaliciousProject:
     @pytest.fixture(autouse=True)
     def _scan(self):
@@ -107,7 +111,6 @@ class TestCodexMaliciousProject:
         for root in roots:
             scope = adapter.scan_scope(root)
             self.result.findings.extend(scan_root(root, scope))
-
 
     def test_has_critical_findings(self):
         severities = {f.severity for f in self.result.findings}
@@ -127,15 +130,10 @@ class TestCodexMaliciousProject:
 
     def test_scans_agents_md(self):
         """Ensure AGENTS.md content is scanned (pipe-to-shell in AGENTS.md)."""
-        agents_findings = [
-            f for f in self.result.findings if "AGENTS.md" in f.file_path
-        ]
+        agents_findings = [f for f in self.result.findings if "AGENTS.md" in f.file_path]
         assert len(agents_findings) > 0
 
     def test_scans_override_file(self):
         """Ensure AGENTS.override.md is scanned too."""
-        override_findings = [
-            f for f in self.result.findings
-            if "AGENTS.override.md" in f.file_path
-        ]
+        override_findings = [f for f in self.result.findings if "AGENTS.override.md" in f.file_path]
         assert len(override_findings) > 0

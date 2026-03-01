@@ -14,9 +14,9 @@ from clawcare.models import Finding, ScanResult, Severity
 
 _SEV_COLORS = {
     Severity.CRITICAL: "\033[91m",  # red
-    Severity.HIGH: "\033[93m",      # yellow
-    Severity.MEDIUM: "\033[94m",    # blue
-    Severity.LOW: "\033[90m",       # grey
+    Severity.HIGH: "\033[93m",  # yellow
+    Severity.MEDIUM: "\033[94m",  # blue
+    Severity.LOW: "\033[90m",  # grey
 }
 _RESET = "\033[0m"
 
@@ -75,11 +75,10 @@ def render_text(result: ScanResult, color: bool = True) -> str:
     lines.append("-" * 60)
     count_crit = sum(1 for f in all_findings if f.severity == Severity.CRITICAL)
     count_high = sum(1 for f in all_findings if f.severity == Severity.HIGH)
-    count_med  = sum(1 for f in all_findings if f.severity == Severity.MEDIUM)
-    count_low  = sum(1 for f in all_findings if f.severity == Severity.LOW)
+    count_med = sum(1 for f in all_findings if f.severity == Severity.MEDIUM)
+    count_low = sum(1 for f in all_findings if f.severity == Severity.LOW)
     lines.append(
-        f"Findings: {count_crit} critical, {count_high} high, "
-        f"{count_med} medium, {count_low} low"
+        f"Findings: {count_crit} critical, {count_high} high, {count_med} medium, {count_low} low"
     )
     lines.append("=" * 60)
 
@@ -89,6 +88,7 @@ def render_text(result: ScanResult, color: bool = True) -> str:
 # ---------------------------------------------------------------------------
 # JSON output (§13.2)
 # ---------------------------------------------------------------------------
+
 
 def _finding_to_dict(f: Finding) -> dict[str, Any]:
     return {
@@ -124,22 +124,22 @@ def render_json(result: ScanResult) -> str:
         ],
         "summary": {
             "total_findings": len(result.findings) + len(result.manifest_violations),
-            "critical": sum(
-                1 for f in result.all_findings if f.severity == Severity.CRITICAL
-            ),
-            "high": sum(
-                1 for f in result.all_findings if f.severity == Severity.HIGH
-            ),
-            "medium": sum(
-                1 for f in result.all_findings if f.severity == Severity.MEDIUM
-            ),
-            "low": sum(
-                1 for f in result.all_findings if f.severity == Severity.LOW
-            ),
+            "critical": sum(1 for f in result.all_findings if f.severity == Severity.CRITICAL),
+            "high": sum(1 for f in result.all_findings if f.severity == Severity.HIGH),
+            "medium": sum(1 for f in result.all_findings if f.severity == Severity.MEDIUM),
+            "low": sum(1 for f in result.all_findings if f.severity == Severity.LOW),
             "fail_on": result.fail_on,
             "mode": result.mode,
         },
-        "findings": [_finding_to_dict(f) for f in result.all_findings if f.rule_id and not f.rule_id.startswith("MANIFEST_")],
-        "manifest_violations": [_finding_to_dict(f) for f in result.all_findings if f.rule_id and f.rule_id.startswith("MANIFEST_")],
+        "findings": [
+            _finding_to_dict(f)
+            for f in result.all_findings
+            if f.rule_id and not f.rule_id.startswith("MANIFEST_")
+        ],
+        "manifest_violations": [
+            _finding_to_dict(f)
+            for f in result.all_findings
+            if f.rule_id and f.rule_id.startswith("MANIFEST_")
+        ],
     }
     return json.dumps(doc, indent=2, ensure_ascii=False)

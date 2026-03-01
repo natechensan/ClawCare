@@ -27,34 +27,108 @@ _QUOTED_RE = re.compile(
 # Commands whose quoted arguments should still be scanned because the
 # content is executed or used to access files.  If the leading command
 # verb is in this set, matches inside its quoted args are NOT skipped.
-_DANGEROUS_CMDS = frozenset({
-    # Shells / executors
-    "bash", "sh", "zsh", "dash", "ksh", "csh", "tcsh", "fish",
-    "eval", "exec", "source", "xargs",
-    # Scripting runtimes
-    "python", "python3", "python2", "ruby", "perl", "node", "deno", "bun",
-    "go", "rustc", "javac", "java",
-    # File readers
-    "cat", "less", "more", "head", "tail", "tac", "bat", "batcat",
-    "nano", "vim", "vi", "nvim", "emacs", "ed",
-    # File operations
-    "cp", "mv", "rm", "scp", "rsync", "install",
-    "ln", "link", "unlink", "shred",
-    # File display / processing
-    "grep", "rg", "awk", "sed", "cut", "sort", "wc", "diff",
-    "strings", "xxd", "od", "hexdump", "file",
-    # Network with file-like access
-    "curl", "wget", "nc", "ncat", "socat",
-    # Scripts
-    "./", "sh", "bash",
-})
+_DANGEROUS_CMDS = frozenset(
+    {
+        # Shells / executors
+        "bash",
+        "sh",
+        "zsh",
+        "dash",
+        "ksh",
+        "csh",
+        "tcsh",
+        "fish",
+        "eval",
+        "exec",
+        "source",
+        "xargs",
+        # Scripting runtimes
+        "python",
+        "python3",
+        "python2",
+        "ruby",
+        "perl",
+        "node",
+        "deno",
+        "bun",
+        "go",
+        "rustc",
+        "javac",
+        "java",
+        # File readers
+        "cat",
+        "less",
+        "more",
+        "head",
+        "tail",
+        "tac",
+        "bat",
+        "batcat",
+        "nano",
+        "vim",
+        "vi",
+        "nvim",
+        "emacs",
+        "ed",
+        # File operations
+        "cp",
+        "mv",
+        "rm",
+        "scp",
+        "rsync",
+        "install",
+        "ln",
+        "link",
+        "unlink",
+        "shred",
+        # File display / processing
+        "grep",
+        "rg",
+        "awk",
+        "sed",
+        "cut",
+        "sort",
+        "wc",
+        "diff",
+        "strings",
+        "xxd",
+        "od",
+        "hexdump",
+        "file",
+        # Network with file-like access
+        "curl",
+        "wget",
+        "nc",
+        "ncat",
+        "socat",
+    }
+)
+# Note: ./script.sh patterns are handled via verb.startswith("./") in
+# _is_dangerous_cmd, not via this set.
 
 # Common command wrappers that should be stripped to find the real verb.
-_CMD_WRAPPERS = frozenset({
-    "sudo", "env", "nice", "nohup", "time", "timeout", "stdbuf",
-    "command", "builtin", "exec", "ionice", "taskset", "chroot",
-    "watch", "unbuffer", "setsid", "chronic", "ifne",
-})
+_CMD_WRAPPERS = frozenset(
+    {
+        "sudo",
+        "env",
+        "nice",
+        "nohup",
+        "time",
+        "timeout",
+        "stdbuf",
+        "command",
+        "builtin",
+        "exec",
+        "ionice",
+        "taskset",
+        "chroot",
+        "watch",
+        "unbuffer",
+        "setsid",
+        "chronic",
+        "ifne",
+    }
+)
 
 # Extract the leading command verb, stripping VAR=val prefixes and wrappers.
 _ENV_PREFIX_RE = re.compile(r"\w+=\S+\s+")
@@ -85,15 +159,15 @@ def _segment_for_position(cmd: str, pos: int, spans: list[tuple[int, int]]) -> s
             continue
         # Check for compound operators
         ch = cmd[i]
-        if ch == ';':
+        if ch == ";":
             splits.append(i + 1)
-        elif ch == '|' and i + 1 < len(cmd) and cmd[i + 1] == '|':
+        elif ch == "|" and i + 1 < len(cmd) and cmd[i + 1] == "|":
             splits.append(i + 2)
             i += 2
             continue
-        elif ch == '|':
+        elif ch == "|":
             splits.append(i + 1)
-        elif ch == '&' and i + 1 < len(cmd) and cmd[i + 1] == '&':
+        elif ch == "&" and i + 1 < len(cmd) and cmd[i + 1] == "&":
             splits.append(i + 2)
             i += 2
             continue
@@ -103,35 +177,76 @@ def _segment_for_position(cmd: str, pos: int, spans: list[tuple[int, int]]) -> s
     # Find which segment contains pos
     for j in range(len(splits) - 1):
         if splits[j] <= pos < splits[j + 1]:
-            return cmd[splits[j]:splits[j + 1]].strip()
+            return cmd[splits[j] : splits[j + 1]].strip()
     return cmd.strip()
 
 
+def _tokenize(s: str) -> list[str]:
+    """Split *s* into whitespace-delimited tokens (no shell quote handling)."""
+    return s.split()
+
+
 def _extract_cmd_verb(segment: str) -> str:
-    """Return the command verb from a single command segment."""
-    s = segment.lstrip()
-    # Strip VAR=val prefixes
-    while True:
-        m = _ENV_PREFIX_RE.match(s)
-        if m:
-            s = s[m.end():]
-        else:
+    """Return the command verb from a single command segment.
+
+    Iteratively strips:
+    - ``VAR=val`` environment prefixes
+    - Wrapper commands (sudo, env, time, etc.) and their flags/arguments
+    """
+    tokens = _tokenize(segment.strip())
+    i = 0
+
+    while i < len(tokens):
+        tok = tokens[i]
+
+        # Strip VAR=val prefixes (KEY=value before the command)
+        if "=" in tok and not tok.startswith("-") and tok.split("=", 1)[0].isidentifier():
+            i += 1
+            continue
+
+        # Normalize: /usr/bin/sudo → sudo
+        bare = (
+            tok.rsplit("/", 1)[-1].lower()
+            if "/" in tok and not tok.startswith("./")
+            else tok.lower()
+        )
+
+        if bare not in _CMD_WRAPPERS:
+            # This is the real verb
             break
-    # Strip wrappers iteratively
-    while True:
-        token = s.split(None, 1)[0] if s.strip() else ""
-        bare = token.rsplit("/", 1)[-1].lower() if "/" in token and not token.startswith("./") else token.lower()
-        if bare in _CMD_WRAPPERS:
-            s = s[len(token):].lstrip()
-            # Skip common wrapper flags like sudo -u root, timeout 5
-            while s and (s[0] == '-' or (s[0].isdigit() and bare in ("timeout", "nice", "ionice"))):
-                # Skip this flag/arg token
-                skip_token = s.split(None, 1)[0] if s.strip() else ""
-                s = s[len(skip_token):].lstrip()
-        else:
+
+        # Skip the wrapper and its flags/arguments
+        i += 1
+        while i < len(tokens):
+            next_tok = tokens[i]
+            # VAR=val after wrapper (e.g. env VAR=val, sudo VAR=val)
+            if (
+                "=" in next_tok
+                and not next_tok.startswith("-")
+                and next_tok.split("=", 1)[0].isidentifier()
+            ):
+                i += 1
+                continue
+            # Flag (starts with -)
+            if next_tok.startswith("-"):
+                i += 1
+                continue
+            # Numeric arg for wrappers that take them (timeout 5, nice 10)
+            if bare in ("timeout", "nice", "ionice") and next_tok.replace(".", "", 1).isdigit():
+                i += 1
+                continue
+            # For sudo specifically, skip non-flag non-command tokens that
+            # follow a flag expecting an argument (e.g. sudo -u root)
+            if bare == "sudo" and i >= 2:
+                prev = tokens[i - 1]
+                if prev in ("-u", "-g", "-C", "-D", "-R", "-T", "-h", "-p"):
+                    i += 1
+                    continue
             break
-    # Extract the verb
-    verb = s.split(None, 1)[0] if s.strip() else ""
+
+    if i >= len(tokens):
+        return ""
+    verb = tokens[i]
     if "/" in verb and not verb.startswith("./"):
         verb = verb.rsplit("/", 1)[-1]
     return verb.lower()
@@ -142,9 +257,7 @@ def _is_dangerous_cmd(segment: str) -> bool:
     verb = _extract_cmd_verb(segment)
     if verb in _DANGEROUS_CMDS:
         return True
-    if verb.startswith("./"):
-        return True
-    return False
+    return bool(verb.startswith("./"))
 
 
 def _should_skip_match(
@@ -254,13 +367,15 @@ def scan_command(
         # a quoted string while a later one is not (see issue #1).
         for match in rule.pattern.finditer(cmd):
             if not _should_skip_match(match.start(), match.end(), quoted, cmd):
-                findings.append(CommandFinding(
-                    rule_id=rule.id,
-                    severity=rule.severity,
-                    matched_text=match.group(0),
-                    explanation=rule.explanation,
-                    remediation=rule.remediation,
-                ))
+                findings.append(
+                    CommandFinding(
+                        rule_id=rule.id,
+                        severity=rule.severity,
+                        matched_text=match.group(0),
+                        explanation=rule.explanation,
+                        remediation=rule.remediation,
+                    )
+                )
                 break  # one finding per rule is enough
 
     # Determine decision

@@ -13,11 +13,17 @@ def _load_entry_point_adapters() -> list[Adapter]:
     adapters: list[Adapter] = []
     if sys.version_info >= (3, 12):
         from importlib.metadata import entry_points
+
         eps = entry_points(group="clawcare.adapters")
     else:
         from importlib.metadata import entry_points as _ep
+
         all_eps = _ep()
-        eps = all_eps.get("clawcare.adapters", []) if isinstance(all_eps, dict) else all_eps.select(group="clawcare.adapters")
+        eps = (
+            all_eps.get("clawcare.adapters", [])
+            if isinstance(all_eps, dict)
+            else all_eps.select(group="clawcare.adapters")
+        )
     for ep in eps:
         try:
             cls = ep.load()
@@ -46,7 +52,7 @@ def load_adapters(adapter_spec: str = "auto") -> list[Adapter]:
     ``import:...`` — single adapter from import string
     """
     if adapter_spec.startswith("import:"):
-        return [load_import_adapter(adapter_spec[len("import:"):])]
+        return [load_import_adapter(adapter_spec[len("import:") :])]
 
     all_adapters = _load_entry_point_adapters()
 

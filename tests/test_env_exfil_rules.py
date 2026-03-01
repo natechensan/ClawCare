@@ -5,10 +5,7 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-import pytest
-
 from clawcare.guard.scanner import scan_command
-from clawcare.models import ExtensionRoot
 from clawcare.scanner.rules import resolve_rules
 from clawcare.scanner.scanner import scan_file
 
@@ -18,6 +15,7 @@ ALL_RULES = resolve_rules(["default"])
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _rule_ids(verdict_or_findings) -> set[str]:
     """Extract rule IDs from scan_command result or scan_file findings."""
@@ -44,8 +42,8 @@ def _scan_text_as_sh(tmp_path: Path, content: str) -> list:
 # CRIT_ENV_ECHO_KNOWN_SECRET — echo of a known-secret variable
 # ---------------------------------------------------------------------------
 
-class TestCritEnvEchoKnownSecret:
 
+class TestCritEnvEchoKnownSecret:
     def test_echo_aws_secret(self):
         v = scan_command("echo $AWS_SECRET_ACCESS_KEY")
         assert "CRIT_ENV_ECHO_KNOWN_SECRET" in _rule_ids(v)
@@ -102,8 +100,8 @@ class TestCritEnvEchoKnownSecret:
 # HIGH_ENV_BULK_DUMP — env/printenv/export -p
 # ---------------------------------------------------------------------------
 
-class TestHighEnvBulkDump:
 
+class TestHighEnvBulkDump:
     def test_bare_env_piped(self):
         v = scan_command("env | grep SECRET")
         assert "HIGH_ENV_BULK_DUMP" in _rule_ids(v)
@@ -138,8 +136,8 @@ class TestHighEnvBulkDump:
 # HIGH_PROC_ENVIRON — /proc/self/environ
 # ---------------------------------------------------------------------------
 
-class TestHighProcEnviron:
 
+class TestHighProcEnviron:
     def test_proc_self_environ(self):
         v = scan_command("cat /proc/self/environ")
         assert "HIGH_PROC_ENVIRON" in _rule_ids(v)
@@ -158,8 +156,8 @@ class TestHighProcEnviron:
 # HIGH_ENV_VAR_ECHO — echo of any ALL_CAPS var
 # ---------------------------------------------------------------------------
 
-class TestHighEnvVarEcho:
 
+class TestHighEnvVarEcho:
     def test_echo_generic_caps_var(self):
         v = scan_command("echo $SOME_CONFIG_VAR")
         assert "HIGH_ENV_VAR_ECHO" in _rule_ids(v)
@@ -178,6 +176,7 @@ class TestHighEnvVarEcho:
 # Prose instructions (static scan only — scan_context: prose)
 # These rules fire in .md files but NOT via scan_command()
 # ---------------------------------------------------------------------------
+
 
 class TestProseEnvRules:
     """Rules with scan_context: prose should fire in markdown docs but not
@@ -253,6 +252,7 @@ class TestProseEnvRules:
 # ---------------------------------------------------------------------------
 # Full flow: guard hook intercepts env-exfil commands
 # ---------------------------------------------------------------------------
+
 
 class TestGuardInterceptsEnvExfil:
     """End-to-end: verify the guard blocks env-reading commands."""

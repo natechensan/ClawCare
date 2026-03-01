@@ -13,6 +13,7 @@ from clawcare.models import ExtensionRoot, Finding, PolicyManifest, Severity
 # Load manifest
 # ---------------------------------------------------------------------------
 
+
 def load_manifest(path: str) -> PolicyManifest:
     """Parse a ``clawcare.manifest.yml`` file into a :class:`PolicyManifest`."""
     raw = yaml.safe_load(Path(path).read_text())
@@ -35,6 +36,7 @@ def load_manifest(path: str) -> PolicyManifest:
 # ---------------------------------------------------------------------------
 # Manifest resolution (§7.1 precedence)
 # ---------------------------------------------------------------------------
+
 
 def resolve_manifest(
     root: ExtensionRoot,
@@ -73,31 +75,61 @@ def resolve_manifest(
 # ---------------------------------------------------------------------------
 
 _EXEC_INDICATORS = [
-    "subprocess", "os.system", "os.popen", "child_process",
-    "exec(", "execSync(", "spawn(",
-    "Popen(", "shell=True",
+    "subprocess",
+    "os.system",
+    "os.popen",
+    "child_process",
+    "exec(",
+    "execSync(",
+    "spawn(",
+    "Popen(",
+    "shell=True",
 ]
 
 _NETWORK_INDICATORS = [
-    "http://", "https://", "requests.", "fetch(", "urllib",
-    "axios", "httpx", "socket.connect",
+    "http://",
+    "https://",
+    "requests.",
+    "fetch(",
+    "urllib",
+    "axios",
+    "httpx",
+    "socket.connect",
 ]
 
 _WRITE_INDICATORS = [
-    'open(', "w)", '"w"', "'w'",
-    "writeFile", "writeFileSync", "fs.write",
-    "> ", ">> ", "tee ",
+    "open(",
+    "w)",
+    '"w"',
+    "'w'",
+    "writeFile",
+    "writeFileSync",
+    "fs.write",
+    "> ",
+    ">> ",
+    "tee ",
 ]
 
 _PERSISTENCE_INDICATORS = [
-    "crontab", "/etc/cron", "systemctl", "LaunchAgents",
-    "LaunchDaemons", "launchctl",
+    "crontab",
+    "/etc/cron",
+    "systemctl",
+    "LaunchAgents",
+    "LaunchDaemons",
+    "launchctl",
 ]
 
 _SECRET_INDICATORS = [
-    "API_KEY", "SECRET_KEY", "ACCESS_TOKEN", "PRIVATE_KEY",
-    "AWS_SECRET", "PASSWORD",
-    "~/.ssh", "id_rsa", ".pem", "~/.aws/credentials",
+    "API_KEY",
+    "SECRET_KEY",
+    "ACCESS_TOKEN",
+    "PRIVATE_KEY",
+    "AWS_SECRET",
+    "PASSWORD",
+    "~/.ssh",
+    "id_rsa",
+    ".pem",
+    "~/.aws/credentials",
     "~/.kube/config",
 ]
 
@@ -110,6 +142,7 @@ def _has_indicators(text: str, indicators: list[str]) -> bool:
 # ---------------------------------------------------------------------------
 # Enforcement (§7.3)
 # ---------------------------------------------------------------------------
+
 
 def enforce(
     manifest: PolicyManifest,
@@ -132,7 +165,7 @@ def enforce(
                 excerpt="(manifest enforcement)",
                 explanation=explanation,
                 remediation="Update the extension to comply with the manifest "
-                            "or adjust the policy.",
+                "or adjust the policy.",
             )
         )
 
@@ -147,6 +180,7 @@ def enforce(
     # network: allowlist — extract domains and check
     if manifest.network == "allowlist" and manifest.allowed_domains:
         import re
+
         domains = set(re.findall(r"https?://([^/\s:\"']+)", scanned_text))
         disallowed = domains - set(manifest.allowed_domains)
         if disallowed:
@@ -157,10 +191,15 @@ def enforce(
 
     # filesystem: read_only
     if manifest.filesystem == "read_only" and _has_indicators(scanned_text, _WRITE_INDICATORS):
-        _add("MANIFEST_FILESYSTEM", "Manifest requires read_only filesystem, but write indicators found.")
+        _add(
+            "MANIFEST_FILESYSTEM",
+            "Manifest requires read_only filesystem, but write indicators found.",
+        )
 
     # persistence: forbidden
-    if manifest.persistence == "forbidden" and _has_indicators(scanned_text, _PERSISTENCE_INDICATORS):
+    if manifest.persistence == "forbidden" and _has_indicators(
+        scanned_text, _PERSISTENCE_INDICATORS
+    ):
         _add(
             "MANIFEST_PERSISTENCE",
             "Manifest forbids persistence, but persistence indicators found.",

@@ -22,8 +22,18 @@ DEFAULT_EXCLUDE_DIRS: set[str] = {
 
 # Default scannable extensions (§8.1).
 DEFAULT_INCLUDE_EXTS: set[str] = {
-    ".md", ".sh", ".bash", ".zsh", ".ps1",
-    ".py", ".js", ".ts", ".yml", ".yaml", ".json", ".txt",
+    ".md",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".ps1",
+    ".py",
+    ".js",
+    ".ts",
+    ".yml",
+    ".yaml",
+    ".json",
+    ".txt",
 }
 
 
@@ -65,9 +75,9 @@ def collect_files(
     for dirpath, dirnames, filenames in os.walk(root_dir):
         # Prune excluded directories in-place
         dirnames[:] = [
-            d for d in dirnames
-            if d not in DEFAULT_EXCLUDE_DIRS
-            and not _matches_any_glob(d, all_excludes)
+            d
+            for d in dirnames
+            if d not in DEFAULT_EXCLUDE_DIRS and not _matches_any_glob(d, all_excludes)
         ]
 
         for fname in filenames:
@@ -76,7 +86,9 @@ def collect_files(
             # Extension filter
             if include_globs:
                 rel = str(fpath.relative_to(root_dir))
-                if not _matches_any_glob(rel, include_globs) and not _matches_any_glob(fname, include_globs):
+                if not _matches_any_glob(rel, include_globs) and not _matches_any_glob(
+                    fname, include_globs
+                ):
                     continue
             else:
                 if fpath.suffix.lower() not in DEFAULT_INCLUDE_EXTS:
@@ -121,6 +133,7 @@ def scan_file(file_path: Path, rules: list[Rule] | None = None) -> list[Finding]
 # Plain-text scanner (original behaviour, used for .sh, .js, .json, etc.)
 # ---------------------------------------------------------------------------
 
+
 def _scan_plain(file_path: Path, rules: list[Rule]) -> list[Finding]:
     """Scan a file with regex rules against the full text."""
     findings: list[Finding] = []
@@ -136,15 +149,17 @@ def _scan_plain(file_path: Path, rules: list[Rule]) -> list[Finding]:
         for match in rule.pattern.finditer(text):
             line_start = text.count("\n", 0, match.start()) + 1
             excerpt = lines[line_start - 1] if line_start <= len(lines) else match.group(0)
-            findings.append(Finding(
-                rule_id=rule.id,
-                severity=rule.severity,
-                file_path=str(file_path),
-                line=line_start,
-                excerpt=excerpt.strip(),
-                explanation=rule.explanation,
-                remediation=rule.remediation,
-            ))
+            findings.append(
+                Finding(
+                    rule_id=rule.id,
+                    severity=rule.severity,
+                    file_path=str(file_path),
+                    line=line_start,
+                    excerpt=excerpt.strip(),
+                    explanation=rule.explanation,
+                    remediation=rule.remediation,
+                )
+            )
 
     return findings
 
@@ -152,6 +167,7 @@ def _scan_plain(file_path: Path, rules: list[Rule]) -> list[Finding]:
 # ---------------------------------------------------------------------------
 # Markdown-aware scanner
 # ---------------------------------------------------------------------------
+
 
 def _scan_markdown(file_path: Path, rules: list[Rule]) -> list[Finding]:
     """Parse Markdown into segments, apply rules respecting scan_context."""
@@ -167,11 +183,7 @@ def _scan_markdown(file_path: Path, rules: list[Rule]) -> list[Finding]:
 
     for segment in segments:
         # Filter rules by scan_context
-        applicable = [
-            r for r in rules
-            if r.scan_context == "any"
-            or r.scan_context == segment.kind
-        ]
+        applicable = [r for r in rules if r.scan_context == "any" or r.scan_context == segment.kind]
 
         seg_lines = segment.content.splitlines()
 
@@ -180,19 +192,18 @@ def _scan_markdown(file_path: Path, rules: list[Rule]) -> list[Finding]:
                 # Line within the segment
                 local_line = segment.content.count("\n", 0, match.start())
                 abs_line = segment.start_line + local_line
-                excerpt = (
-                    seg_lines[local_line] if local_line < len(seg_lines)
-                    else match.group(0)
+                excerpt = seg_lines[local_line] if local_line < len(seg_lines) else match.group(0)
+                findings.append(
+                    Finding(
+                        rule_id=rule.id,
+                        severity=rule.severity,
+                        file_path=str(file_path),
+                        line=abs_line,
+                        excerpt=excerpt.strip(),
+                        explanation=rule.explanation,
+                        remediation=rule.remediation,
+                    )
                 )
-                findings.append(Finding(
-                    rule_id=rule.id,
-                    severity=rule.severity,
-                    file_path=str(file_path),
-                    line=abs_line,
-                    excerpt=excerpt.strip(),
-                    explanation=rule.explanation,
-                    remediation=rule.remediation,
-                ))
 
     return findings
 
@@ -200,6 +211,7 @@ def _scan_markdown(file_path: Path, rules: list[Rule]) -> list[Finding]:
 # ---------------------------------------------------------------------------
 # Python AST + regex scanner
 # ---------------------------------------------------------------------------
+
 
 def _scan_python(file_path: Path, rules: list[Rule]) -> list[Finding]:
     """Run Python AST analysis, then regex fallback for remaining rules."""

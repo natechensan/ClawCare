@@ -16,6 +16,7 @@ adapter = CursorAdapter()
 
 # ── Detection ────────────────────────────────────────────────────
 
+
 class TestCursorDetect:
     def test_cursor_rules_detected(self):
         conf = adapter.detect(os.path.join(FIXTURES, "cursor_project"))
@@ -37,6 +38,7 @@ class TestCursorDetect:
 
 
 # ── Discovery ────────────────────────────────────────────────────
+
 
 class TestCursorDiscover:
     def test_project_has_cursor_project_root(self):
@@ -61,6 +63,7 @@ class TestCursorDiscover:
 
 
 # ── Golden: benign Cursor project ────────────────────────────────
+
 
 class TestCursorBenignProject:
     def test_no_findings(self):
@@ -93,6 +96,7 @@ class TestCursorBenignProject:
 
 # ── Golden: malicious Cursor project ────────────────────────────
 
+
 class TestCursorMaliciousProject:
     @pytest.fixture(autouse=True)
     def _scan(self):
@@ -105,9 +109,7 @@ class TestCursorMaliciousProject:
             fail_on="high",
         )
         for root in roots:
-            self.result.findings.extend(
-                scan_root(root, adapter.scan_scope(root)))
-
+            self.result.findings.extend(scan_root(root, adapter.scan_scope(root)))
 
     def test_has_critical_findings(self):
         assert Severity.CRITICAL in {f.severity for f in self.result.findings}
@@ -123,14 +125,10 @@ class TestCursorMaliciousProject:
 
     def test_scans_mdc_files(self):
         """Ensure .mdc rule files are scanned."""
-        mdc_findings = [
-            f for f in self.result.findings if ".mdc" in f.file_path
-        ]
+        mdc_findings = [f for f in self.result.findings if ".mdc" in f.file_path]
         assert len(mdc_findings) > 0
 
     def test_scans_legacy_cursorrules(self):
         """Ensure .cursorrules is scanned."""
-        legacy_findings = [
-            f for f in self.result.findings if ".cursorrules" in f.file_path
-        ]
+        legacy_findings = [f for f in self.result.findings if ".cursorrules" in f.file_path]
         assert len(legacy_findings) > 0

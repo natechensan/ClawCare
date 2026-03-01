@@ -11,10 +11,12 @@ from clawcare.scanner.scanner import scan_file, scan_root
 @pytest.fixture
 def tmp_file(tmp_path):
     """Helper that writes content to a temp file and returns its Path."""
+
     def _write(content: str, name: str = "test.sh") -> Path:
         fp = tmp_path / name
         fp.write_text(content)
         return fp
+
     return _write
 
 

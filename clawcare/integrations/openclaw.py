@@ -82,13 +82,28 @@ class OpenClawAdapter:
     def scan_scope(self, root: ExtensionRoot) -> dict:
         return {
             "include_globs": [
-                "SKILL.md", "*.md", "*.py", "*.js", "*.ts",
-                "*.sh", "*.bash", "*.zsh", "*.ps1",
-                "*.yml", "*.yaml", "*.json", "*.txt",
+                "SKILL.md",
+                "*.md",
+                "*.py",
+                "*.js",
+                "*.ts",
+                "*.sh",
+                "*.bash",
+                "*.zsh",
+                "*.ps1",
+                "*.yml",
+                "*.yaml",
+                "*.json",
+                "*.txt",
             ],
             "exclude_globs": [
-                "node_modules", "dist", "build", ".git",
-                "__pycache__", ".venv", "venv",
+                "node_modules",
+                "dist",
+                "build",
+                ".git",
+                "__pycache__",
+                ".venv",
+                "venv",
             ],
             "languages": ["python", "javascript", "typescript", "shell"],
         }
@@ -113,6 +128,7 @@ class OpenClawAdapter:
                 # Try to extract name/description from YAML frontmatter
                 if text.startswith("---"):
                     import yaml
+
                     end = text.index("---", 3)
                     fm = yaml.safe_load(text[3:end])
                     if isinstance(fm, dict):

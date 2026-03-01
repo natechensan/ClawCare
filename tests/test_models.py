@@ -36,7 +36,3 @@ class TestFinding:
         f3 = Finding("R3", Severity.HIGH, "a.py", 1, "", "")
         ordered = sorted([f1, f2, f3], key=lambda f: f.sort_key())
         assert [f.rule_id for f in ordered] == ["R2", "R3", "R1"]
-
-
-
-

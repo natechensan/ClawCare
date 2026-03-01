@@ -44,13 +44,13 @@ def _run_engine(fixture_name, adapter, ci=False, manifest_opt="auto"):
         manifest = resolve_manifest(root, adapter, manifest_opt)
         if manifest is not None:
             texts = []
-            for fpath in collect_files(root, scope.get("include_globs"),
-                                       scope.get("exclude_globs")):
+            for fpath in collect_files(
+                root, scope.get("include_globs"), scope.get("exclude_globs")
+            ):
                 with contextlib.suppress(OSError):
                     texts.append(fpath.read_text(errors="replace"))
             violations = enforce(manifest, root, "\n".join(texts))
             result.manifest_violations.extend(violations)
-
 
     exit_code = decide(result, ci_flag=ci, fail_on="high")
     return result, exit_code
@@ -94,8 +94,6 @@ class TestClaudeMaliciousPlugin:
         _, code = _run_engine("claude_malicious_plugin", claude)
         assert code == 0
 
-
-
     def test_detected_as_plugin(self):
         result, _ = _run_engine("claude_malicious_plugin", claude)
         assert any(r.kind == "claude_plugin" for r in result.roots)
@@ -105,8 +103,7 @@ class TestClaudeManifestViolation:
     def test_has_manifest_violations(self):
         result, _ = _run_engine("claude_manifest_violation", claude)
         assert len(result.manifest_violations) > 0
-        assert any(v.rule_id.startswith("MANIFEST_")
-                    for v in result.manifest_violations)
+        assert any(v.rule_id.startswith("MANIFEST_") for v in result.manifest_violations)
 
     def test_violations_are_high_or_critical(self):
         result, _ = _run_engine("claude_manifest_violation", claude)
@@ -155,5 +152,3 @@ class TestOpenClawMaliciousProject:
     def test_warns_locally(self):
         _, code = _run_engine("openclaw_malicious_project", openclaw)
         assert code == 0
-
-

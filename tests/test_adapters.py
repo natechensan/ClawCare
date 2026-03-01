@@ -9,6 +9,7 @@ from clawcare.models import ExtensionRoot
 
 # ── Fake adapters for testing ───────────────────────────────────
 
+
 class FakeHighConfidence:
     name = "high_conf"
     version = "1.0"
@@ -65,6 +66,7 @@ class FakeZeroConfidence:
 
 class FakeTiedConfidence:
     """Same confidence as FakeHighConfidence but lower priority."""
+
     name = "tied"
     version = "1.0"
     priority = 10
@@ -83,6 +85,7 @@ class FakeTiedConfidence:
 
 
 # ── Tests ───────────────────────────────────────────────────────
+
 
 class TestSelectAdapter:
     def test_picks_highest_confidence(self):
