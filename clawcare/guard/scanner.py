@@ -8,10 +8,37 @@ Design goal: <10 ms for a typical command.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from clawcare.models import Severity
 from clawcare.scanner.rules import Rule, resolve_rules
+
+# ---------------------------------------------------------------------------
+# Quoted-string detection — used to skip matches inside string literals
+# ---------------------------------------------------------------------------
+
+# Matches single-quoted or double-quoted strings, handling escaped quotes.
+# Single-quoted: 'anything except unescaped single quote'
+# Double-quoted: "anything except unescaped double quote"
+_QUOTED_RE = re.compile(
+    r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*\"""",
+    re.DOTALL,
+)
+
+
+def _quoted_spans(cmd: str) -> list[tuple[int, int]]:
+    """Return ``(start, end)`` spans of quoted strings in *cmd*."""
+    return [(m.start(), m.end()) for m in _QUOTED_RE.finditer(cmd)]
+
+
+def _in_quoted_string(
+    match_start: int,
+    match_end: int,
+    spans: list[tuple[int, int]],
+) -> bool:
+    """Return True if the match span is entirely inside a quoted string."""
+    return any(qs <= match_start and match_end <= qe for qs, qe in spans)
 
 
 @dataclass
@@ -90,12 +117,14 @@ def scan_command(
     threshold = Severity.from_str(fail_on)
 
     findings: list[CommandFinding] = []
+    quoted = _quoted_spans(cmd)
+
     for rule in effective_rules:
         # Only apply rules relevant to command context (code / any).
         if rule.scan_context not in ("any", "code"):
             continue
         match = rule.pattern.search(cmd)
-        if match:
+        if match and not _in_quoted_string(match.start(), match.end(), quoted):
             findings.append(CommandFinding(
                 rule_id=rule.id,
                 severity=rule.severity,
