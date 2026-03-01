@@ -10,6 +10,7 @@
   pattern: "(~/\\.ssh/|id_rsa|id_ed25519|\\.pem\\b|~/\\.aws/credentials|~/\\.kube/config|security\\s+find-generic-password|security\\s+find-internet-password)"
   explanation: Accessing well-known credential paths or keychain commands.
   remediation: Avoid accessing credential paths directly; use a secrets manager.
+  scan_context: code
 
 - id: CRIT_SECRET_EXFIL
   severity: critical

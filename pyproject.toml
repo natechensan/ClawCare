@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clawcare"
-version = "0.8.2"
+version = "0.8.3"
 description = "Guardian engine for agentic-tool extension supply-chain security"
 readme = "README.md"
 requires-python = ">=3.10"
