@@ -21,6 +21,7 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 # Unit tests: scan_scope returns correct globs per root kind
 # ================================================================
 
+
 class TestCursorScanScope:
     adapter = CursorAdapter()
 
@@ -81,6 +82,7 @@ class TestClaudeCodeScanScope:
 # Discovery tests: no whole-project fallback roots
 # ================================================================
 
+
 class TestNoFallbackRoots:
     """Verify adapters don't fall back to scanning the entire project."""
 
@@ -109,14 +111,12 @@ class TestClaudeDiscoversDotClaudeSkills:
     adapter = ClaudeCodeAdapter()
 
     def test_finds_skill_in_claude_skills_dir(self):
-        roots = self.adapter.discover_roots(
-            os.path.join(FIXTURES, "claude_project"))
+        roots = self.adapter.discover_roots(os.path.join(FIXTURES, "claude_project"))
         skill_roots = [r for r in roots if r.kind == "claude_skill"]
         assert len(skill_roots) >= 1
 
     def test_skill_root_path_is_skill_dir(self):
-        roots = self.adapter.discover_roots(
-            os.path.join(FIXTURES, "claude_project"))
+        roots = self.adapter.discover_roots(os.path.join(FIXTURES, "claude_project"))
         skill_roots = [r for r in roots if r.kind == "claude_skill"]
         # The root should point to the skill directory, not the project
         for sr in skill_roots:
@@ -126,6 +126,7 @@ class TestClaudeDiscoversDotClaudeSkills:
 # ================================================================
 # Integration tests: project-level files are NOT scanned
 # ================================================================
+
 
 class TestProjectFilesNotScanned:
     """End-to-end: decoy README.md files at the project root must NOT
@@ -141,8 +142,7 @@ class TestProjectFilesNotScanned:
             all_findings.extend(scan_root(root, scope))
         # The README.md has pipe-to-shell — if scanned, it would trigger
         readme_findings = [f for f in all_findings if "README.md" in f.file_path]
-        assert readme_findings == [], (
-            f"README.md should not be scanned, but got: {readme_findings}")
+        assert readme_findings == [], f"README.md should not be scanned, but got: {readme_findings}"
 
     def test_codex_project_readme_not_scanned(self):
         adapter = CodexAdapter()
@@ -153,8 +153,7 @@ class TestProjectFilesNotScanned:
             scope = adapter.scan_scope(root)
             all_findings.extend(scan_root(root, scope))
         readme_findings = [f for f in all_findings if "README.md" in f.file_path]
-        assert readme_findings == [], (
-            f"README.md should not be scanned, but got: {readme_findings}")
+        assert readme_findings == [], f"README.md should not be scanned, but got: {readme_findings}"
 
     def test_claude_project_readme_not_scanned(self):
         adapter = ClaudeCodeAdapter()
@@ -165,8 +164,7 @@ class TestProjectFilesNotScanned:
             scope = adapter.scan_scope(root)
             all_findings.extend(scan_root(root, scope))
         readme_findings = [f for f in all_findings if "README.md" in f.file_path]
-        assert readme_findings == [], (
-            f"README.md should not be scanned, but got: {readme_findings}")
+        assert readme_findings == [], f"README.md should not be scanned, but got: {readme_findings}"
 
     def test_cursor_benign_project_still_clean(self):
         """Ensure the existing benign cursor project still has zero findings."""

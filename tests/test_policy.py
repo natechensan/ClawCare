@@ -1,6 +1,5 @@
 """Tests for policy manifest loading and enforcement."""
 
-
 import pytest
 
 from clawcare.models import ExtensionRoot, PolicyManifest, Severity
@@ -10,10 +9,12 @@ from clawcare.policy import enforce, load_manifest
 @pytest.fixture
 def manifest_file(tmp_path):
     """Write a clawcare.manifest.yml and return its path."""
+
     def _write(contents: str) -> str:
         p = tmp_path / "clawcare.manifest.yml"
         p.write_text(contents)
         return str(p)
+
     return _write
 
 
@@ -24,7 +25,8 @@ def root():
 
 class TestLoadManifest:
     def test_full_manifest(self, manifest_file):
-        m = load_manifest(manifest_file("""\
+        m = load_manifest(
+            manifest_file("""\
 permissions:
   exec: none
   network: allowlist
@@ -34,7 +36,8 @@ permissions:
 allowed_domains:
   - api.anthropic.com
 fail_on: high
-"""))
+""")
+        )
         assert m.exec == "none"
         assert m.network == "allowlist"
         assert m.filesystem == "read_only"

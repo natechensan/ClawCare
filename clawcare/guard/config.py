@@ -10,10 +10,8 @@ continue to work without changes.
 
 # Re-export everything from the unified config module.
 from clawcare.config import (  # noqa: F401
+    DEFAULT_LOG_PATH,
     AuditConfig,
     GuardConfig,
     load_guard_config,
-    USER_CONFIG_DIR as DEFAULT_CONFIG_DIR,
-    USER_CONFIG_PATH as DEFAULT_CONFIG_PATH,
-    DEFAULT_LOG_PATH,
 )

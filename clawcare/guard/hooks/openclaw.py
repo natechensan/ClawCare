@@ -18,6 +18,7 @@ See also:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 from typing import Any
@@ -49,17 +50,13 @@ def handle_post(config: GuardConfig) -> int:
         if raw is None:
             raw = output.get("exitCode")
         if raw is not None:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 exit_code = int(raw)
-            except (ValueError, TypeError):
-                pass
 
     raw_duration = payload.get("duration_ms")
     if raw_duration is not None:
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             duration_ms = float(raw_duration)
-        except (ValueError, TypeError):
-            pass
 
     if config.audit.enabled:
         write_audit_event(
@@ -80,6 +77,7 @@ def handle_post(config: GuardConfig) -> int:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_command(payload: dict[str, Any]) -> str | None:
     """Extract command string from the plugin-provided payload."""

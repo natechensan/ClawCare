@@ -93,8 +93,13 @@ class CodexAdapter:
     def scan_scope(self, root: ExtensionRoot) -> dict:
         base = {
             "exclude_globs": [
-                "node_modules", "dist", "build", ".git",
-                "__pycache__", ".venv", "venv",
+                "node_modules",
+                "dist",
+                "build",
+                ".git",
+                "__pycache__",
+                ".venv",
+                "venv",
             ],
             "languages": ["python", "javascript", "typescript", "shell"],
         }
@@ -102,14 +107,25 @@ class CodexAdapter:
         if root.kind == "codex_project":
             # Project roots: only scan AGENTS.md and overrides
             base["include_globs"] = [
-                "AGENTS.md", "AGENTS.override.md",
+                "AGENTS.md",
+                "AGENTS.override.md",
             ]
         else:
             # Skill roots: scan all relevant files within the skill
             base["include_globs"] = [
-                "SKILL.md", "*.md", "*.py", "*.js", "*.ts",
-                "*.sh", "*.bash", "*.json", "*.yml", "*.yaml",
-                "*.txt", "*.ps1", "*.zsh",
+                "SKILL.md",
+                "*.md",
+                "*.py",
+                "*.js",
+                "*.ts",
+                "*.sh",
+                "*.bash",
+                "*.json",
+                "*.yml",
+                "*.yaml",
+                "*.txt",
+                "*.ps1",
+                "*.zsh",
             ]
 
         return base
@@ -162,6 +178,7 @@ class CodexAdapter:
                 text = skill_md.read_text()
                 if text.startswith("---"):
                     import yaml
+
                     end = text.index("---", 3)
                     fm = yaml.safe_load(text[3:end])
                     if isinstance(fm, dict):

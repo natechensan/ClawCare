@@ -3,9 +3,6 @@
 import os
 
 from clawcare.config import (
-    ClawCareConfig,
-    GuardConfig,
-    ScanConfig,
     load_config,
     load_guard_config,
     load_project_config,
@@ -86,6 +83,7 @@ scan:
 # Unified config loader
 # -----------------------------------------------------------------------
 
+
 class TestUnifiedConfig:
     """Tests for the merged project > user > defaults resolution."""
 
@@ -141,6 +139,7 @@ guard:
 
         # Monkeypatch the user config path
         import clawcare.config as config_mod
+
         monkeypatch.setattr(config_mod, "USER_CONFIG_PATH", user_cfg)
 
         cfg = load_config(scan_path=str(project))
@@ -167,6 +166,7 @@ guard:
         project.mkdir()
 
         import clawcare.config as config_mod
+
         monkeypatch.setattr(config_mod, "USER_CONFIG_PATH", user_cfg)
 
         cfg = load_config(scan_path=str(project))

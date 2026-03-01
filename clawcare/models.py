@@ -10,6 +10,7 @@ from typing import Any
 # Severity
 # ---------------------------------------------------------------------------
 
+
 class Severity(enum.IntEnum):
     """Finding severity — ordered so higher value == more severe."""
 
@@ -30,6 +31,7 @@ class Severity(enum.IntEnum):
 # Extension root
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ExtensionRoot:
     """One installable extension unit discovered by an adapter."""
@@ -48,6 +50,7 @@ class ExtensionRoot:
 # ---------------------------------------------------------------------------
 # Finding
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Finding:
@@ -70,15 +73,16 @@ class Finding:
 # Policy manifest
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PolicyManifest:
     """Parsed ``clawcare.manifest.yml`` manifest."""
 
-    exec: str = "full"             # none | restricted | full
+    exec: str = "full"  # none | restricted | full
     network: str = "unrestricted"  # none | allowlist | unrestricted
-    filesystem: str = "read_write" # read_only | read_write
+    filesystem: str = "read_write"  # read_only | read_write
     secrets: str = "unrestricted"  # none | env_only | vault_only | unrestricted
-    persistence: str = "allowed"   # forbidden | allowed
+    persistence: str = "allowed"  # forbidden | allowed
     allowed_domains: list[str] = field(default_factory=list)
     allowed_paths: list[str] = field(default_factory=lambda: ["**"])
     fail_on: str | None = None  # overrides CLI --fail-on
@@ -88,6 +92,7 @@ class PolicyManifest:
 # Adapter info (included in reports)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AdapterInfo:
     name: str
@@ -96,6 +101,7 @@ class AdapterInfo:
 # ---------------------------------------------------------------------------
 # Scan result (aggregate)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ScanResult:

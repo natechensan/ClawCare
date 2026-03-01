@@ -55,10 +55,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Binary path resolution
 # ---------------------------------------------------------------------------
+
 
 def _resolve_binary_path() -> str:
     """Resolve the full absolute path to the ``clawcare`` CLI binary.
@@ -283,9 +283,14 @@ def deactivate_openclaw(
         changed = True
 
     if cfg_path.is_file():
-        changed = _openclaw_set_plugin_enabled(
-            cfg_path, enabled=False, plugin_dir=plugin_dir,
-        ) or changed
+        changed = (
+            _openclaw_set_plugin_enabled(
+                cfg_path,
+                enabled=False,
+                plugin_dir=plugin_dir,
+            )
+            or changed
+        )
 
     return changed
 
@@ -315,6 +320,7 @@ def is_openclaw_active(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_json(path: Path) -> dict:
     """Load a JSON file, returning ``{}`` if missing or invalid."""
@@ -432,9 +438,10 @@ def _ensure_hook_entry(
     for entry in entries:
         if entry.get("matcher") == matcher:
             cmds: list = entry.setdefault("hooks", [])
-            if not any(_is_clawcare_hook(c) and
-                       (c if isinstance(c, str) else c.get("command")) == command
-                       for c in cmds):
+            if not any(
+                _is_clawcare_hook(c) and (c if isinstance(c, str) else c.get("command")) == command
+                for c in cmds
+            ):
                 cmds.append(hook_obj)
             return
 

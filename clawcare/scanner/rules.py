@@ -30,6 +30,7 @@ from clawcare.models import Severity
 # Data class
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Rule:
     """A single detection rule."""
@@ -39,8 +40,8 @@ class Rule:
     pattern: re.Pattern[str]
     explanation: str
     remediation: str = ""
-    confidence: str = "high"      # high | medium | low
-    scan_context: str = "any"     # any | code | prose
+    confidence: str = "high"  # high | medium | low
+    scan_context: str = "any"  # any | code | prose
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +74,7 @@ def _parse_flags(flag_str: str | None) -> int:
 # Loader
 # ---------------------------------------------------------------------------
 
+
 def _load_rules_from_file(path: Path) -> list[Rule]:
     """Load rules from a single YAML file."""
     raw = yaml.safe_load(path.read_text())
@@ -84,15 +86,17 @@ def _load_rules_from_file(path: Path) -> list[Rule]:
         if not isinstance(entry, dict):
             continue
         try:
-            rules.append(Rule(
-                id=entry["id"],
-                severity=Severity.from_str(entry["severity"]),
-                pattern=re.compile(entry["pattern"], _parse_flags(entry.get("flags"))),
-                explanation=entry.get("explanation", ""),
-                remediation=entry.get("remediation", ""),
-                confidence=entry.get("confidence", "high"),
-                scan_context=entry.get("scan_context", "any"),
-            ))
+            rules.append(
+                Rule(
+                    id=entry["id"],
+                    severity=Severity.from_str(entry["severity"]),
+                    pattern=re.compile(entry["pattern"], _parse_flags(entry.get("flags"))),
+                    explanation=entry.get("explanation", ""),
+                    remediation=entry.get("remediation", ""),
+                    confidence=entry.get("confidence", "high"),
+                    scan_context=entry.get("scan_context", "any"),
+                )
+            )
         except (KeyError, re.error, ValueError):
             continue  # skip malformed rules gracefully
     return rules
@@ -123,8 +127,7 @@ def list_builtin_rulesets() -> list[str]:
     if not _RULESETS_DIR.is_dir():
         return []
     return sorted(
-        d.name for d in _RULESETS_DIR.iterdir()
-        if d.is_dir() and not d.name.startswith(".")
+        d.name for d in _RULESETS_DIR.iterdir() if d.is_dir() and not d.name.startswith(".")
     )
 
 
@@ -136,6 +139,7 @@ def load_builtin_ruleset(name: str = "default") -> list[Rule]:
 # ---------------------------------------------------------------------------
 # Resolve: default + user-specified rulesets
 # ---------------------------------------------------------------------------
+
 
 def resolve_rules(
     rulesets: list[str] | None = None,

@@ -113,11 +113,25 @@ class ClaudeCodeAdapter:
     def scan_scope(self, root: ExtensionRoot) -> dict:
         return {
             "include_globs": [
-                "*.md", "*.py", "*.js", "*.ts", "*.sh", "*.bash",
-                "*.json", "*.yml", "*.yaml", "*.txt", "*.ps1", "*.zsh",
+                "*.md",
+                "*.py",
+                "*.js",
+                "*.ts",
+                "*.sh",
+                "*.bash",
+                "*.json",
+                "*.yml",
+                "*.yaml",
+                "*.txt",
+                "*.ps1",
+                "*.zsh",
             ],
             "exclude_globs": [
-                "node_modules", "dist", "build", ".git", "__pycache__",
+                "node_modules",
+                "dist",
+                "build",
+                ".git",
+                "__pycache__",
             ],
             "languages": ["python", "javascript", "typescript", "shell"],
         }
@@ -160,6 +174,7 @@ class ClaudeCodeAdapter:
                 text = skill_md.read_text()
                 if text.startswith("---"):
                     import yaml
+
                     end = text.index("---", 3)
                     fm = yaml.safe_load(text[3:end])
                     if isinstance(fm, dict):

@@ -14,14 +14,11 @@ def _make_result() -> ScanResult:
         fail_on="high",
     )
     r.findings = [
-        Finding("CRIT_PIPE_TO_SHELL", Severity.CRITICAL, "z.sh", 3,
-                "curl | bash", "pipe to shell"),
-        Finding("HIGH_REVERSE_SHELL", Severity.HIGH, "a.sh", 1,
-                "/dev/tcp/...", "reverse shell"),
+        Finding("CRIT_PIPE_TO_SHELL", Severity.CRITICAL, "z.sh", 3, "curl | bash", "pipe to shell"),
+        Finding("HIGH_REVERSE_SHELL", Severity.HIGH, "a.sh", 1, "/dev/tcp/...", "reverse shell"),
     ]
     r.manifest_violations = [
-        Finding("MANIFEST_EXEC", Severity.HIGH, "/test/root", 0,
-                "(manifest)", "exec violation"),
+        Finding("MANIFEST_EXEC", Severity.HIGH, "/test/root", 0, "(manifest)", "exec violation"),
     ]
     return r
 

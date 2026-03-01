@@ -33,32 +33,56 @@ def main() -> None:
 # scan
 # ───────────────────────────────────────────────────────────────────
 
+
 @main.command()
 @click.argument("path", type=click.Path(exists=True))
-@click.option("--adapter", "adapter_spec", default="auto",
-              help="auto | <name> | import:pkg.module:Class")
-@click.option("--ci", "ci_flag", is_flag=True, default=False,
-              help="Force CI mode (exit 2 on fail).")
-@click.option("--block-local", "block_local_flag", is_flag=True, default=None,
-              help="Block locally too (exit 2 on fail).")
-@click.option("--fail-on", "fail_on", default=None,
-              type=click.Choice(["low", "medium", "high", "critical"],
-                                case_sensitive=False),
-              help="Minimum severity to fail on (default: high).")
-@click.option("--manifest", "manifest_opt", default="auto",
-              help="auto | <path> | none")
-@click.option("--format", "fmt", default="text",
-              type=click.Choice(["text", "json"], case_sensitive=False),
-              help="Output format.")
-@click.option("--json-out", "json_out", default=None,
-              type=click.Path(), help="Write JSON report to file.")
-@click.option("--exclude", "excludes", multiple=True,
-              help="Extra glob patterns to exclude (repeatable).")
-@click.option("--max-file-size-kb", "max_kb", default=None, type=int,
-              help="Max file size to scan in KB (default 512).")
-@click.option("--ruleset", "rulesets", multiple=True,
-              help="Ruleset folder path or built-in name (repeatable). "
-                   "Default ruleset always included.")
+@click.option(
+    "--adapter", "adapter_spec", default="auto", help="auto | <name> | import:pkg.module:Class"
+)
+@click.option(
+    "--ci", "ci_flag", is_flag=True, default=False, help="Force CI mode (exit 2 on fail)."
+)
+@click.option(
+    "--block-local",
+    "block_local_flag",
+    is_flag=True,
+    default=None,
+    help="Block locally too (exit 2 on fail).",
+)
+@click.option(
+    "--fail-on",
+    "fail_on",
+    default=None,
+    type=click.Choice(["low", "medium", "high", "critical"], case_sensitive=False),
+    help="Minimum severity to fail on (default: high).",
+)
+@click.option("--manifest", "manifest_opt", default="auto", help="auto | <path> | none")
+@click.option(
+    "--format",
+    "fmt",
+    default="text",
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    help="Output format.",
+)
+@click.option(
+    "--json-out", "json_out", default=None, type=click.Path(), help="Write JSON report to file."
+)
+@click.option(
+    "--exclude", "excludes", multiple=True, help="Extra glob patterns to exclude (repeatable)."
+)
+@click.option(
+    "--max-file-size-kb",
+    "max_kb",
+    default=None,
+    type=int,
+    help="Max file size to scan in KB (default 512).",
+)
+@click.option(
+    "--ruleset",
+    "rulesets",
+    multiple=True,
+    help="Ruleset folder path or built-in name (repeatable). Default ruleset always included.",
+)
 def scan(
     path: str,
     adapter_spec: str,
@@ -126,8 +150,7 @@ def scan(
     for root in roots:
         scope = adapter.scan_scope(root)
         scope.setdefault("max_file_size_kb", effective_max_kb)
-        findings = scan_root(root, scope, extra_excludes=effective_excludes,
-                             rules=rules)
+        findings = scan_root(root, scope, extra_excludes=effective_excludes, rules=rules)
         result.findings.extend(findings)
 
         # --- manifest enforcement ---
@@ -135,10 +158,14 @@ def scan(
         if manifest is not None:
             # Concatenate all scannable text for policy checks
             from clawcare.scanner.scanner import collect_files
+
             texts: list[str] = []
-            for fpath in collect_files(root, scope.get("include_globs"),
-                                        scope.get("exclude_globs"),
-                                        scope.get("max_file_size_kb", effective_max_kb)):
+            for fpath in collect_files(
+                root,
+                scope.get("include_globs"),
+                scope.get("exclude_globs"),
+                scope.get("max_file_size_kb", effective_max_kb),
+            ):
                 with contextlib.suppress(OSError):
                     texts.append(fpath.read_text(errors="replace"))
             all_text = "\n".join(texts)
@@ -158,8 +185,9 @@ def scan(
     result.fail_on = effective_fail_on
 
     # --- gate decision ---
-    exit_code = decide(result, ci_flag=ci_flag, enforce=effective_block_local,
-                       fail_on=effective_fail_on)
+    exit_code = decide(
+        result, ci_flag=ci_flag, enforce=effective_block_local, fail_on=effective_fail_on
+    )
 
     # --- output ---
     if fmt == "json":
@@ -179,6 +207,7 @@ def scan(
 # ───────────────────────────────────────────────────────────────────
 # adapters
 # ───────────────────────────────────────────────────────────────────
+
 
 @main.group()
 def adapters() -> None:
@@ -217,6 +246,7 @@ def adapters_describe(name: str) -> None:
 # guard
 # ───────────────────────────────────────────────────────────────────
 
+
 @main.group()
 def guard() -> None:
     """Runtime command interception and audit (ClawCare Guard)."""
@@ -224,14 +254,19 @@ def guard() -> None:
 
 @guard.command("run")
 @click.argument("command", nargs=-1, required=True)
-@click.option("--fail-on", "fail_on", default=None,
-              type=click.Choice(["low", "medium", "high", "critical"],
-                                case_sensitive=False),
-              help="Minimum severity to block (default: from config or high).")
-@click.option("--dry-run", is_flag=True, default=False,
-              help="Scan only — do not execute the command.")
-@click.option("--config", "config_path", default=None,
-              type=click.Path(), help="Path to guard config file.")
+@click.option(
+    "--fail-on",
+    "fail_on",
+    default=None,
+    type=click.Choice(["low", "medium", "high", "critical"], case_sensitive=False),
+    help="Minimum severity to block (default: from config or high).",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Scan only — do not execute the command."
+)
+@click.option(
+    "--config", "config_path", default=None, type=click.Path(), help="Path to guard config file."
+)
 def guard_run(
     command: tuple[str, ...],
     fail_on: str | None,
@@ -242,10 +277,9 @@ def guard_run(
 
     Usage: clawcare guard run -- curl http://example.com
     """
+    import os
     import subprocess
     import time
-
-    import os
 
     from clawcare.guard.audit import write_audit_event
     from clawcare.guard.config import load_guard_config
@@ -307,14 +341,21 @@ def guard_run(
 
 
 @guard.command("hook")
-@click.option("--platform", required=True,
-              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
-              help="Platform whose hook protocol to handle.")
-@click.option("--stage", required=True,
-              type=click.Choice(["pre", "post", "post-failure"], case_sensitive=False),
-              help="Hook stage: pre (before execution), post (after), or post-failure (on error).")
-@click.option("--config", "config_path", default=None,
-              type=click.Path(), help="Path to guard config file.")
+@click.option(
+    "--platform",
+    required=True,
+    type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+    help="Platform whose hook protocol to handle.",
+)
+@click.option(
+    "--stage",
+    required=True,
+    type=click.Choice(["pre", "post", "post-failure"], case_sensitive=False),
+    help="Hook stage: pre (before execution), post (after), or post-failure (on error).",
+)
+@click.option(
+    "--config", "config_path", default=None, type=click.Path(), help="Path to guard config file."
+)
 def guard_hook(platform: str, stage: str, config_path: str | None) -> None:
     """Handle a platform hook event (reads JSON from stdin).
 
@@ -367,14 +408,22 @@ def guard_hook(platform: str, stage: str, config_path: str | None) -> None:
 
 
 @guard.command("activate")
-@click.option("--platform", required=True,
-              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
-              help="Platform to install hooks for.")
-@click.option("--settings", "settings_path", default=None,
-              type=click.Path(),
-              help="Path to platform settings file (auto-detected if omitted).")
-@click.option("--project", is_flag=True, default=False,
-              help="Install at project level instead of user level.")
+@click.option(
+    "--platform",
+    required=True,
+    type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+    help="Platform to install hooks for.",
+)
+@click.option(
+    "--settings",
+    "settings_path",
+    default=None,
+    type=click.Path(),
+    help="Path to platform settings file (auto-detected if omitted).",
+)
+@click.option(
+    "--project", is_flag=True, default=False, help="Install at project level instead of user level."
+)
 def guard_activate(platform: str, settings_path: str | None, project: bool) -> None:
     """Install ClawCare guard hooks into a platform's config.
 
@@ -388,7 +437,7 @@ def guard_activate(platform: str, settings_path: str | None, project: bool) -> N
       ~/.openclaw/openclaw.json.
     """
     if platform == "claude":
-        from clawcare.guard.activate import activate_claude, _resolve_binary_path
+        from clawcare.guard.activate import _resolve_binary_path, activate_claude
 
         dest = activate_claude(settings_path, project_level=project)
         binary = _resolve_binary_path()
@@ -405,7 +454,7 @@ def guard_activate(platform: str, settings_path: str | None, project: bool) -> N
         return
 
     if platform == "openclaw":
-        from clawcare.guard.activate import activate_openclaw, _resolve_binary_path
+        from clawcare.guard.activate import _resolve_binary_path, activate_openclaw
 
         dest = activate_openclaw(
             openclaw_home=settings_path,
@@ -429,12 +478,19 @@ def guard_activate(platform: str, settings_path: str | None, project: bool) -> N
 
 
 @guard.command("deactivate")
-@click.option("--platform", required=True,
-              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
-              help="Platform to remove hooks from.")
-@click.option("--settings", "settings_path", default=None,
-              type=click.Path(),
-              help="Path to platform settings file (auto-detected if omitted).")
+@click.option(
+    "--platform",
+    required=True,
+    type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+    help="Platform to remove hooks from.",
+)
+@click.option(
+    "--settings",
+    "settings_path",
+    default=None,
+    type=click.Path(),
+    help="Path to platform settings file (auto-detected if omitted).",
+)
 def guard_deactivate(platform: str, settings_path: str | None) -> None:
     """Remove ClawCare guard hooks from a platform's config."""
     if platform == "claude":
@@ -464,12 +520,19 @@ def guard_deactivate(platform: str, settings_path: str | None) -> None:
 
 
 @guard.command("status")
-@click.option("--platform", required=True,
-              type=click.Choice(["claude", "openclaw"], case_sensitive=False),
-              help="Platform to check.")
-@click.option("--settings", "settings_path", default=None,
-              type=click.Path(),
-              help="Path to platform settings file.")
+@click.option(
+    "--platform",
+    required=True,
+    type=click.Choice(["claude", "openclaw"], case_sensitive=False),
+    help="Platform to check.",
+)
+@click.option(
+    "--settings",
+    "settings_path",
+    default=None,
+    type=click.Path(),
+    help="Path to platform settings file.",
+)
 def guard_status(platform: str, settings_path: str | None) -> None:
     """Check whether ClawCare guard hooks are installed."""
     if platform == "claude":
@@ -499,19 +562,31 @@ def guard_status(platform: str, settings_path: str | None) -> None:
 
 
 @guard.command("report")
-@click.option("--since", "since", default=None,
-              help="Filter events since relative time (e.g. 24h, 30m, 7d) or ISO timestamp.")
-@click.option("--only-violations", is_flag=True, default=False,
-              help="Show only events with matched findings.")
-@click.option("--format", "fmt", default="text",
-              type=click.Choice(["text", "json"], case_sensitive=False),
-              help="Output format.")
-@click.option("--limit", "limit", default=100, type=int,
-              help="Max number of events to show (newest first).")
-@click.option("--config", "config_path", default=None,
-              type=click.Path(), help="Path to guard config file.")
-@click.option("--log-path", "log_path", default=None,
-              type=click.Path(), help="Override audit log path.")
+@click.option(
+    "--since",
+    "since",
+    default=None,
+    help="Filter events since relative time (e.g. 24h, 30m, 7d) or ISO timestamp.",
+)
+@click.option(
+    "--only-violations", is_flag=True, default=False, help="Show only events with matched findings."
+)
+@click.option(
+    "--format",
+    "fmt",
+    default="text",
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    help="Output format.",
+)
+@click.option(
+    "--limit", "limit", default=100, type=int, help="Max number of events to show (newest first)."
+)
+@click.option(
+    "--config", "config_path", default=None, type=click.Path(), help="Path to guard config file."
+)
+@click.option(
+    "--log-path", "log_path", default=None, type=click.Path(), help="Override audit log path."
+)
 def guard_report(
     since: str | None,
     only_violations: bool,
@@ -525,7 +600,6 @@ def guard_report(
     Shows command execution history with findings and statuses.
     """
     import json
-
     import os
 
     from clawcare.guard.audit import read_audit_events

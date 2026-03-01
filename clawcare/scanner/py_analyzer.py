@@ -56,6 +56,7 @@ _OS_CALLS: dict[str, tuple[str, Severity, str]] = {
 # AST visitor
 # ---------------------------------------------------------------------------
 
+
 class _DangerVisitor(ast.NodeVisitor):
     """Walk Python AST and collect findings."""
 
@@ -86,11 +87,11 @@ class _DangerVisitor(ast.NodeVisitor):
                 and self._has_shell_true(node)
             ):
                 self._add(
-                            node,
-                            "MED_SUBPROCESS_SHELL",
-                            Severity.MEDIUM,
-                            f"subprocess.{attr}(shell=True) executes commands via the shell.",
-                        )
+                    node,
+                    "MED_SUBPROCESS_SHELL",
+                    Severity.MEDIUM,
+                    f"subprocess.{attr}(shell=True) executes commands via the shell.",
+                )
 
         self.generic_visit(node)
 
@@ -112,20 +113,23 @@ class _DangerVisitor(ast.NodeVisitor):
         severity: Severity,
         explanation: str,
     ) -> None:
-        self.findings.append(Finding(
-            rule_id=rule_id,
-            severity=severity,
-            file_path=self.file_path,
-            line=getattr(node, "lineno", 0),
-            excerpt=ast.dump(node)[:120],
-            explanation=explanation,
-            remediation="Avoid this pattern in extension code.",
-        ))
+        self.findings.append(
+            Finding(
+                rule_id=rule_id,
+                severity=severity,
+                file_path=self.file_path,
+                line=getattr(node, "lineno", 0),
+                excerpt=ast.dump(node)[:120],
+                explanation=explanation,
+                remediation="Avoid this pattern in extension code.",
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def analyze_python(file_path: Path) -> list[Finding]:
     """Parse *file_path* as Python and return structural findings.
