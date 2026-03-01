@@ -120,7 +120,8 @@ class TestCursorMaliciousProject:
     def test_blocks_in_ci(self):
         assert decide(self.result, ci_flag=True, fail_on="high") == 2
 
-    def test_warns_locally(self):
+    def test_warns_locally(self, monkeypatch):
+        monkeypatch.delenv("CI", raising=False)
         assert decide(self.result, ci_flag=False, fail_on="high") == 0
 
     def test_scans_mdc_files(self):

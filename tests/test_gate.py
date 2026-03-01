@@ -39,7 +39,8 @@ def result_clean():
 
 
 class TestGateDecide:
-    def test_local_always_exits_0(self, result_with_high):
+    def test_local_always_exits_0(self, result_with_high, monkeypatch):
+        monkeypatch.delenv("CI", raising=False)
         code = decide(result_with_high, ci_flag=False, enforce=False)
         assert code == 0
 

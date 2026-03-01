@@ -90,7 +90,8 @@ class TestClaudeMaliciousPlugin:
         _, code = _run_engine("claude_malicious_plugin", claude, ci=True)
         assert code == 2
 
-    def test_warns_locally(self):
+    def test_warns_locally(self, monkeypatch):
+        monkeypatch.delenv("CI", raising=False)
         _, code = _run_engine("claude_malicious_plugin", claude)
         assert code == 0
 
@@ -149,6 +150,7 @@ class TestOpenClawMaliciousProject:
         _, code = _run_engine("openclaw_malicious_project", openclaw, ci=True)
         assert code == 2
 
-    def test_warns_locally(self):
+    def test_warns_locally(self, monkeypatch):
+        monkeypatch.delenv("CI", raising=False)
         _, code = _run_engine("openclaw_malicious_project", openclaw)
         assert code == 0

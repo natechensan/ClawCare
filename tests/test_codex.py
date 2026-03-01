@@ -124,7 +124,8 @@ class TestCodexMaliciousProject:
         code = decide(self.result, ci_flag=True, fail_on="high")
         assert code == 2
 
-    def test_warns_locally(self):
+    def test_warns_locally(self, monkeypatch):
+        monkeypatch.delenv("CI", raising=False)
         code = decide(self.result, ci_flag=False, fail_on="high")
         assert code == 0
 
