@@ -49,13 +49,15 @@ _DANGEROUS_CMDS = frozenset({
     "./", "sh", "bash",
 })
 
-# Extract the leading command verb from a (possibly compound) command.
-# Handles: cmd ..., VAR=val cmd ..., sudo cmd ..., env cmd ...
-_CMD_VERB_RE = re.compile(
-    r"(?:(?:\w+=\S+\s+)*)"           # optional VAR=val prefixes
-    r"(?:(?:sudo|env|nice|nohup)\s+)*"  # optional wrappers
-    r"(\S+)",                          # the actual command verb
-)
+# Common command wrappers that should be stripped to find the real verb.
+_CMD_WRAPPERS = frozenset({
+    "sudo", "env", "nice", "nohup", "time", "timeout", "stdbuf",
+    "command", "builtin", "exec", "ionice", "taskset", "chroot",
+    "watch", "unbuffer", "setsid", "chronic", "ifne",
+})
+
+# Extract the leading command verb, stripping VAR=val prefixes and wrappers.
+_ENV_PREFIX_RE = re.compile(r"\w+=\S+\s+")
 
 
 def _quoted_spans(cmd: str) -> list[tuple[int, int]]:
@@ -63,24 +65,83 @@ def _quoted_spans(cmd: str) -> list[tuple[int, int]]:
     return [(m.start(), m.end()) for m in _QUOTED_RE.finditer(cmd)]
 
 
-def _extract_cmd_verb(cmd: str) -> str:
-    """Return the leading command verb, stripped of path components."""
-    m = _CMD_VERB_RE.match(cmd.lstrip())
-    if not m:
-        return ""
-    verb = m.group(1)
-    # Strip path: /usr/bin/cat → cat, ./script.sh → ./script.sh
+def _segment_for_position(cmd: str, pos: int, spans: list[tuple[int, int]]) -> str:
+    """Return the command segment (split on &&, ||, ;, |) containing *pos*.
+
+    Only splits on operators that are outside quoted strings.
+    """
+    # Find split points outside quotes
+    splits: list[int] = [0]
+    i = 0
+    while i < len(cmd):
+        # Skip over quoted spans
+        in_quote = False
+        for qs, qe in spans:
+            if qs <= i < qe:
+                i = qe
+                in_quote = True
+                break
+        if in_quote:
+            continue
+        # Check for compound operators
+        ch = cmd[i]
+        if ch == ';':
+            splits.append(i + 1)
+        elif ch == '|' and i + 1 < len(cmd) and cmd[i + 1] == '|':
+            splits.append(i + 2)
+            i += 2
+            continue
+        elif ch == '|':
+            splits.append(i + 1)
+        elif ch == '&' and i + 1 < len(cmd) and cmd[i + 1] == '&':
+            splits.append(i + 2)
+            i += 2
+            continue
+        i += 1
+    splits.append(len(cmd))
+
+    # Find which segment contains pos
+    for j in range(len(splits) - 1):
+        if splits[j] <= pos < splits[j + 1]:
+            return cmd[splits[j]:splits[j + 1]].strip()
+    return cmd.strip()
+
+
+def _extract_cmd_verb(segment: str) -> str:
+    """Return the command verb from a single command segment."""
+    s = segment.lstrip()
+    # Strip VAR=val prefixes
+    while True:
+        m = _ENV_PREFIX_RE.match(s)
+        if m:
+            s = s[m.end():]
+        else:
+            break
+    # Strip wrappers iteratively
+    while True:
+        token = s.split(None, 1)[0] if s.strip() else ""
+        bare = token.rsplit("/", 1)[-1].lower() if "/" in token and not token.startswith("./") else token.lower()
+        if bare in _CMD_WRAPPERS:
+            s = s[len(token):].lstrip()
+            # Skip common wrapper flags like sudo -u root, timeout 5
+            while s and (s[0] == '-' or (s[0].isdigit() and bare in ("timeout", "nice", "ionice"))):
+                # Skip this flag/arg token
+                skip_token = s.split(None, 1)[0] if s.strip() else ""
+                s = s[len(skip_token):].lstrip()
+        else:
+            break
+    # Extract the verb
+    verb = s.split(None, 1)[0] if s.strip() else ""
     if "/" in verb and not verb.startswith("./"):
         verb = verb.rsplit("/", 1)[-1]
     return verb.lower()
 
 
-def _is_dangerous_cmd(cmd: str) -> bool:
-    """Return True if *cmd* starts with a command that accesses/executes its args."""
-    verb = _extract_cmd_verb(cmd)
+def _is_dangerous_cmd(segment: str) -> bool:
+    """Return True if *segment* starts with a command that accesses/executes its args."""
+    verb = _extract_cmd_verb(segment)
     if verb in _DANGEROUS_CMDS:
         return True
-    # Match ./script.sh, ./anything patterns
     if verb.startswith("./"):
         return True
     return False
@@ -94,16 +155,16 @@ def _should_skip_match(
 ) -> bool:
     """Return True if the match is inside a quoted string of a non-dangerous command.
 
-    Matches inside quoted args are skipped only when the overall command
-    is NOT in the dangerous-commands list (executors, file-access, network).
-    This prevents false positives like ``gh issue create --body "~/.ssh/..."``
-    while still catching ``cat "~/.ssh/id_rsa"`` or ``bash -c "curl ..."``.
+    For compound commands (joined by ``&&``, ``||``, ``;``, ``|``), the
+    dangerousness check applies to the specific segment containing the match,
+    not the whole command.
     """
     for qs, qe in spans:
         if qs <= match_start and match_end <= qe:
             # Match is inside this quoted span.
-            # Scan inside it (don't skip) if the command is dangerous.
-            return not _is_dangerous_cmd(cmd)
+            # Determine the segment containing this match.
+            segment = _segment_for_position(cmd, match_start, spans)
+            return not _is_dangerous_cmd(segment)
     return False
 
 
