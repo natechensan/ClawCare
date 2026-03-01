@@ -19,11 +19,18 @@ from clawcare.scanner.rules import Rule, resolve_rules
 # ---------------------------------------------------------------------------
 
 # Matches single-quoted or double-quoted strings, handling escaped quotes.
-# Single-quoted: 'anything except unescaped single quote'
-# Double-quoted: "anything except unescaped double quote"
 _QUOTED_RE = re.compile(
     r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*\"""",
     re.DOTALL,
+)
+
+# Patterns where the following quoted string argument is executed as code.
+# We check the text immediately before a quoted span to detect these.
+_EXEC_PREFIX_RE = re.compile(
+    r"(?:bash|sh|zsh|dash|ksh)\s+-c\s*$"
+    r"|(?:python[23]?|ruby|perl|node)\s+(?:-c|-e)\s*$"
+    r"|eval\s+$",
+    re.IGNORECASE,
 )
 
 
@@ -32,13 +39,24 @@ def _quoted_spans(cmd: str) -> list[tuple[int, int]]:
     return [(m.start(), m.end()) for m in _QUOTED_RE.finditer(cmd)]
 
 
-def _in_quoted_string(
+def _is_exec_context(cmd: str, span_start: int) -> bool:
+    """Return True if the quoted string at *span_start* is an arg to an executor."""
+    prefix = cmd[:span_start]
+    return bool(_EXEC_PREFIX_RE.search(prefix))
+
+
+def _should_skip_match(
     match_start: int,
     match_end: int,
     spans: list[tuple[int, int]],
+    cmd: str,
 ) -> bool:
-    """Return True if the match span is entirely inside a quoted string."""
-    return any(qs <= match_start and match_end <= qe for qs, qe in spans)
+    """Return True if the match is inside a non-executable quoted string."""
+    for qs, qe in spans:
+        if qs <= match_start and match_end <= qe:
+            # Match is inside this quoted span — skip only if NOT an exec context.
+            return not _is_exec_context(cmd, qs)
+    return False
 
 
 @dataclass
@@ -123,15 +141,18 @@ def scan_command(
         # Only apply rules relevant to command context (code / any).
         if rule.scan_context not in ("any", "code"):
             continue
-        match = rule.pattern.search(cmd)
-        if match and not _in_quoted_string(match.start(), match.end(), quoted):
-            findings.append(CommandFinding(
-                rule_id=rule.id,
-                severity=rule.severity,
-                matched_text=match.group(0),
-                explanation=rule.explanation,
-                remediation=rule.remediation,
-            ))
+        # Use finditer to check all matches — the first match may be inside
+        # a quoted string while a later one is not (see issue #1).
+        for match in rule.pattern.finditer(cmd):
+            if not _should_skip_match(match.start(), match.end(), quoted, cmd):
+                findings.append(CommandFinding(
+                    rule_id=rule.id,
+                    severity=rule.severity,
+                    matched_text=match.group(0),
+                    explanation=rule.explanation,
+                    remediation=rule.remediation,
+                ))
+                break  # one finding per rule is enough
 
     # Determine decision
     decision = "allow"
