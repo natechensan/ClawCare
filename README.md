@@ -1,7 +1,7 @@
 # ClawCare
 
 <p align="center">
-  <img src="https://github.com/natechensan/ClawCare/blob/main/clawcare.png?raw=true" alt="ClawCare" width="200" />
+  <img src="https://github.com/AgentSafety/ClawCare/blob/main/clawcare.png?raw=true" alt="ClawCare" width="200" />
 </p>
 
 ***Run AI agents with care - OpenClaw, Claude Code and more***
@@ -30,7 +30,7 @@ ClawCare catches these patterns **before** they run — both statically (scannin
 
 See ClawCare in action:
 
-👉 **[ClawCare Demo](https://github.com/natechensan/ClawCare-demo)** — static scan, runtime guard, CI blocking, and custom adapters.
+👉 **[ClawCare Demo](https://github.com/AgentSafety/ClawCare-demo)** — static scan, runtime guard, CI blocking, and custom adapters.
 
 ## Quick Start
 
