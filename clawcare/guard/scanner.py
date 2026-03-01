@@ -20,7 +20,7 @@ from clawcare.scanner.rules import Rule, resolve_rules
 
 # Matches single-quoted or double-quoted strings, handling escaped quotes.
 _QUOTED_RE = re.compile(
-    r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*""",
+    r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*\"""",
     re.DOTALL,
 )
 
